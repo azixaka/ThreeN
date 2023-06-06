@@ -31,16 +31,59 @@ Install-Package ThreeN
 Here is a basic usage example:
 
 ```csharp
-// Example code goes here...
+		var rowData = new float[]
+        {
+            0, 0, 0,
+            0, 1, 1,
+            1, 0, 1,
+            1, 1, 0,
+        };
+
+        var inData = new Matrix<float>(4, 2, 0, 3, rowData);
+        var outData = new Matrix<float>(4, 1, 2, 3, rowData);
+        
+        var configuration = new[] { 2, 10, 10, 10, 1 };
+        var nn = NeuralNetwork.Create(configuration);
+        NeuralNetworkExtensions.Randomise(nn, 0, 1);
+
+        TryAllData(inData, nn);
+
+        var cost = NeuralNetworkExtensions.Cost(nn, inData, outData);
+        Console.WriteLine($"Pre-training cost: {cost}");
+
+        var nng = NeuralNetwork.Create(configuration);
+
+        var sw = Stopwatch.StartNew();
+
+        for (int i = 0; i < 10_000; i++)
+        {         
+            NeuralNetworkExtensions.BackPropagation(nn, nng, inData, outData);
+            NeuralNetworkExtensions.Train(nn, nng, 1f);
+        }
+
+        sw.Stop();
+        cost = NeuralNetworkExtensions.Cost(nn, inData, outData);
+        Console.WriteLine($"Post-training cost: {cost}; Elapsed: {sw.Elapsed.TotalMilliseconds}ms");
+
+        TryAllData(inData, nn);
+
+        static void TryAllData(Matrix<float> inData, NeuralNetwork nn)
+        {
+            for (int i = 0; i < inData.Rows; i++)
+            {
+                inData.CopyRow(nn.InputLayer, i);
+
+                NeuralNetworkExtensions.Forward(nn);
+
+                for (int j = 0; j < inData.Columns; j++)
+                {
+                    Console.Write($"{inData.ElementAt(i, j)} ");
+                }
+
+                Console.WriteLine($"{nn.OutputLayer.ElementAt(0, 0)}");
+            }
+        }
 ```
 
-Visit the documentation (link to documentation) for a comprehensive guide on how to use the ThreeN library.
-
-Contributing
-We welcome contributions! Please see here (link to contributing guidelines) for details on how to contribute.
-
 License
-This project is licensed under the MIT License - see the LICENSE.md file for details.
-
-Support
-If you have any problems or suggestions, please open an issue here (link to issues page).
+This project is licensed under the GPL3 License - see the LICENSE.md file for details.
