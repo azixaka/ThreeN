@@ -24,3 +24,21 @@ To install ThreeN, you can use the [NuGet package manager](https://www.nuget.org
 
 ```shell
 Install-Package ThreeN
+
+## Quick Start
+
+Here is a basic usage example:
+
+```csharp
+// Example code goes here...
+
+Visit the documentation (link to documentation) for a comprehensive guide on how to use the ThreeN library.
+
+Contributing
+We welcome contributions! Please see here (link to contributing guidelines) for details on how to contribute.
+
+License
+This project is licensed under the MIT License - see the LICENSE.md file for details.
+
+Support
+If you have any problems or suggestions, please open an issue here (link to issues page).
