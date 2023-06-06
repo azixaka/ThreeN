@@ -24,6 +24,7 @@ To install ThreeN, you can use the [NuGet package manager](https://www.nuget.org
 
 ```shell
 Install-Package ThreeN
+```
 
 ## Quick Start
 
@@ -31,6 +32,7 @@ Here is a basic usage example:
 
 ```csharp
 // Example code goes here...
+```
 
 Visit the documentation (link to documentation) for a comprehensive guide on how to use the ThreeN library.
 
