@@ -7,7 +7,7 @@ sealed class Program
 {
     static void Main()
     {
-        var rowData = new float[]
+        var rawData = new float[]
         {
             0, 0, 0,
             0, 1, 1,
@@ -15,8 +15,8 @@ sealed class Program
             1, 1, 0,
         };
 
-        var inData = new Matrix<float>(4, 2, 0, 3, rowData);
-        var outData = new Matrix<float>(4, 1, 2, 3, rowData);
+        var inData = new Matrix<float>(4, 2, 0, 3, rawData);
+        var outData = new Matrix<float>(4, 1, 2, 3, rawData);
 
         Print(ref inData, "in");
         Print(ref outData, "out");

@@ -31,7 +31,7 @@ Install-Package ThreeN
 Here is a basic usage example:
 
 ```csharp
-		var rowData = new float[]
+	var rawData = new float[]
         {
             0, 0, 0,
             0, 1, 1,
@@ -39,8 +39,8 @@ Here is a basic usage example:
             1, 1, 0,
         };
 
-        var inData = new Matrix<float>(4, 2, 0, 3, rowData);
-        var outData = new Matrix<float>(4, 1, 2, 3, rowData);
+        var inData = new Matrix<float>(4, 2, 0, 3, rawData);
+        var outData = new Matrix<float>(4, 1, 2, 3, rawData);
         
         var configuration = new[] { 2, 10, 10, 10, 1 };
         var nn = NeuralNetwork.Create(configuration);
