@@ -11,6 +11,9 @@ sealed class Program
         LinearNN();
     }
 
+    //Sigmoid, Tahn -> Xavier
+    //Relu -> He
+
     private static void XorNN()
     {
         var rawData = new float[]
@@ -28,7 +31,8 @@ sealed class Program
         var activations = new[] { ActivationFunctionType.Sigmoid, ActivationFunctionType.Sigmoid };
 
         var nn = NeuralNetwork.Create(activations, configuration);
-        NeuralNetworkExtensions.Randomise(nn, 0, 1);
+        //NeuralNetworkExtensions.Randomise(nn, 0, 1);
+        NeuralNetworkExtensions.XavierInitialise(nn);
         var nng = NeuralNetwork.Create(activations, configuration);
 
         ProcessNN("XOR", inData, outData, nn, nng, 100_000, 1f);
@@ -55,7 +59,8 @@ sealed class Program
         var activations = new[] { ActivationFunctionType.Relu, ActivationFunctionType.PassThrough };
 
         var nn = NeuralNetwork.Create(activations, configuration);
-        NeuralNetworkExtensions.Randomise(nn, -5, 5);
+        //NeuralNetworkExtensions.Randomise(nn, -5, 5);
+        NeuralNetworkExtensions.HeInitialise(nn);
         var nng = NeuralNetwork.Create(activations, configuration);
 
         ProcessNN("Linear", inData, outData, nn, nng, 100_000, 1e-3f);

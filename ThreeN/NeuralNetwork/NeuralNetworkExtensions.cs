@@ -171,4 +171,40 @@ public static class NeuralNetworkExtensions
             MatrixExtensions.Randomise(ref nn.Biases[i], low, high);
         }
     }
+
+    public static void XavierInitialise(NeuralNetwork nn)
+    {
+        var rand = new Random();
+        for (int i = 0; i < nn.Weights.Length; i++)
+        {
+            float fan_in = nn.Weights[i].Rows;
+            float fan_out = nn.Weights[i].Columns;
+            float limit = (float)Math.Sqrt(6.0 / (fan_in + fan_out));
+
+            for (int j = 0; j < nn.Weights[i].Rows; j++)
+                for (int k = 0; k < nn.Weights[i].Columns; k++)
+                {
+                    nn.Weights[i][j, k] = 2 * limit * (float)rand.NextDouble() - limit;
+                }
+
+            MatrixExtensions.Fill(ref nn.Biases[i], 0);
+        }
+    }
+
+    public static void HeInitialise(NeuralNetwork nn)
+    {
+        var rand = new Random();
+        for (int i = 0; i < nn.Weights.Length; i++)
+        {
+            float fan_in = nn.Weights[i].Rows;
+
+            for (int j = 0; j < nn.Weights[i].Rows; j++)
+                for (int k = 0; k < nn.Weights[i].Columns; k++)
+                {
+                    nn.Weights[i][j, k] = (float)(rand.NextDouble() * Math.Sqrt(2.0 / fan_in));
+                }
+
+            MatrixExtensions.Fill(ref nn.Biases[i], 0);
+        }
+    }
 }
