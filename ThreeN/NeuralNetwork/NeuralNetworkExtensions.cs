@@ -59,8 +59,9 @@ public static class NeuralNetworkExtensions
                 for (int j = 0; j < nn.Activations[l].Columns; j++)
                 {
                     float a = nn.Activations[l][0, j];
-                    float da = gradient.Activations[l][0, j];                    
-                    float qa = ActivationFunctions.Derivative(a, ActivationFunctionType.Sigmoid);
+                    float da = gradient.Activations[l][0, j];
+                    var activationFunctionType = nn.ActivationFunctions[l - 1];
+                    float qa = ActivationFunctions.Derivative(a, activationFunctionType);
                     float q = da * qa;
 
                     gradient.Biases[l - 1][0, j] += q;
@@ -146,7 +147,7 @@ public static class NeuralNetworkExtensions
         {
             MatrixExtensions.DotProduct(nn.Activations[i + 1], nn.Activations[i], nn.Weights[i]);
             nn.Activations[i + 1].Add(ref nn.Biases[i]);
-            MatrixExtensions.Activate(ref nn.Activations[i + 1], ActivationFunctionType.Sigmoid);
+            MatrixExtensions.Activate(ref nn.Activations[i + 1], nn.ActivationFunctions[i]);
         }
     }
 

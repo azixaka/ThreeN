@@ -22,7 +22,9 @@ sealed class Program
         Print(ref outData, "out");
 
         var configuration = new[] { 2, 10, 10, 10, 1 };
-        var nn = NeuralNetwork.Create(configuration);
+        var activations = new[] { ActivationFunctionType.Sigmoid, ActivationFunctionType.Sigmoid, ActivationFunctionType.Sigmoid, ActivationFunctionType.Sigmoid };
+
+        var nn = NeuralNetwork.Create(activations, configuration);
         NeuralNetworkExtensions.Randomise(nn, 0, 1);
 
         TryAllData(inData, nn);
@@ -30,7 +32,7 @@ sealed class Program
         var cost = NeuralNetworkExtensions.Cost(nn, inData, outData);
         Console.WriteLine($"Pre-training cost: {cost}");
 
-        var nng = NeuralNetwork.Create(configuration);
+        var nng = NeuralNetwork.Create(activations, configuration);
 
         var sw = Stopwatch.StartNew();
 
@@ -57,10 +59,10 @@ sealed class Program
 
                 for (int j = 0; j < inData.Columns; j++)
                 {
-                    Console.Write($"{inData.ElementAt(i, j)} ");
+                    Console.Write($"{inData[i, j]} ");
                 }
 
-                Console.WriteLine($"{nn.OutputLayer.ElementAt(0, 0)}");
+                Console.WriteLine($"{nn.OutputLayer[0, 0]}");
             }
         }
     }
@@ -72,7 +74,7 @@ sealed class Program
         {
             for (int j = 0; j < matrix.Columns; j++)
             {
-                Console.Write($"\t {matrix.ElementAt(i, j):F4} \t");
+                Console.Write($"\t {matrix[i, j]:F4} \t");
             }
 
             Console.WriteLine();
