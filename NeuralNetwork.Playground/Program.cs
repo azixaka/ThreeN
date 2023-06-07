@@ -7,6 +7,12 @@ sealed class Program
 {
     static void Main()
     {
+        XorNN();
+        LinearNN();
+    }
+
+    private static void XorNN()
+    {
         var rawData = new float[]
         {
             0, 0, 0,
@@ -15,32 +21,65 @@ sealed class Program
             1, 1, 0,
         };
 
-        var inData = new Matrix<float>(4, 2, 0, 3, rawData);
-        var outData = new Matrix<float>(4, 1, 2, 3, rawData);
+        var inData = new Matrix<float>(rawData.Length / 3, 2, 0, 3, rawData);
+        var outData = new Matrix<float>(rawData.Length / 3, 1, 2, 3, rawData);
 
-        Print(ref inData, "in");
-        Print(ref outData, "out");
-
-        var configuration = new[] { 2, 10, 10, 10, 1 };
-        var activations = new[] { ActivationFunctionType.Sigmoid, ActivationFunctionType.Sigmoid, ActivationFunctionType.Sigmoid, ActivationFunctionType.Sigmoid };
+        var configuration = new[] { 2, 2, 1 };
+        var activations = new[] { ActivationFunctionType.Sigmoid, ActivationFunctionType.Sigmoid };
 
         var nn = NeuralNetwork.Create(activations, configuration);
         NeuralNetworkExtensions.Randomise(nn, 0, 1);
+        var nng = NeuralNetwork.Create(activations, configuration);
+
+        ProcessNN("XOR", inData, outData, nn, nng, 100_000, 1f);
+    }
+
+    private static void LinearNN()
+    {
+        var rawData = new float[]
+        {
+            0, 0, 0,
+            0, 1, 1,
+            1, 0, 1,
+            1, 1, 2,
+            2, 2, 4,
+            3, 2, 5,
+            4, 3, 7,
+            5, 5, 10
+        };
+
+        var inData = new Matrix<float>(rawData.Length / 3, 2, 0, 3, rawData);
+        var outData = new Matrix<float>(rawData.Length / 3, 1, 2, 3, rawData);
+
+        var configuration = new[] { 2, 2, 1 };
+        var activations = new[] { ActivationFunctionType.Relu, ActivationFunctionType.PassThrough };
+
+        var nn = NeuralNetwork.Create(activations, configuration);
+        NeuralNetworkExtensions.Randomise(nn, -5, 5);
+        var nng = NeuralNetwork.Create(activations, configuration);
+
+        ProcessNN("Linear", inData, outData, nn, nng, 100_000, 1e-3f);
+    }
+
+    private static void ProcessNN(string name, Matrix<float> inData, Matrix<float> outData, NeuralNetwork nn, NeuralNetwork gradient, int epochs, float learningRate)
+    {
+        Console.WriteLine($"--------------------------------{name}--------------------------------");
+
+        Print(ref inData, "in");
+        Print(ref outData, "out");
 
         TryAllData(inData, nn);
 
         var cost = NeuralNetworkExtensions.Cost(nn, inData, outData);
         Console.WriteLine($"Pre-training cost: {cost}");
 
-        var nng = NeuralNetwork.Create(activations, configuration);
-
         var sw = Stopwatch.StartNew();
 
-        for (int i = 0; i < 100_000; i++)
+        for (int i = 0; i < epochs; i++)
         {
-            //NeuralNetworkExtensions.FiniteDifference(nn, nng, 1e-3f, inData, outData);
-            NeuralNetworkExtensions.BackPropagation(nn, nng, inData, outData);
-            NeuralNetworkExtensions.Train(nn, nng, 1f);
+            //NeuralNetworkExtensions.FiniteDifference(nn, gradient, 1e-3f, inData, outData);
+            NeuralNetworkExtensions.BackPropagation(nn, gradient, inData, outData);
+            NeuralNetworkExtensions.Train(nn, gradient, learningRate);
         }
 
         sw.Stop();
@@ -49,21 +88,24 @@ sealed class Program
 
         TryAllData(inData, nn);
 
-        static void TryAllData(Matrix<float> inData, NeuralNetwork nn)
+        Console.WriteLine("----------------------------------------------------------------------------------");
+        Console.WriteLine();
+    }
+
+    static void TryAllData(Matrix<float> inData, NeuralNetwork nn)
+    {
+        for (int i = 0; i < inData.Rows; i++)
         {
-            for (int i = 0; i < inData.Rows; i++)
+            inData.CopyRow(nn.InputLayer, i);
+
+            NeuralNetworkExtensions.Forward(nn);
+
+            for (int j = 0; j < inData.Columns; j++)
             {
-                inData.CopyRow(nn.InputLayer, i);
-
-                NeuralNetworkExtensions.Forward(nn);
-
-                for (int j = 0; j < inData.Columns; j++)
-                {
-                    Console.Write($"{inData[i, j]} ");
-                }
-
-                Console.WriteLine($"{nn.OutputLayer[0, 0]}");
+                Console.Write($"{inData[i, j]} ");
             }
+
+            Console.WriteLine($"{nn.OutputLayer[0, 0]}");
         }
     }
 

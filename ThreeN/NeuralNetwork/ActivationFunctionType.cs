@@ -5,5 +5,6 @@ public enum ActivationFunctionType : byte
     Sigmoid,
     Relu,
     Tahn,
-    Sin
+    Sin,
+    PassThrough
 }

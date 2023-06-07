@@ -11,6 +11,7 @@ public static class ActivationFunctions
             ActivationFunctionType.Relu => Relu(x),
             ActivationFunctionType.Tahn => Tahn(x),
             ActivationFunctionType.Sin => Sin(x),
+            ActivationFunctionType.PassThrough => PassThrough(x),
             _ => throw new ArgumentException("Invalid activation function type", nameof(type))
         };
 
@@ -21,6 +22,7 @@ public static class ActivationFunctions
             ActivationFunctionType.Relu => ReluDerivative(y),
             ActivationFunctionType.Tahn => TahnDerivative(y),
             ActivationFunctionType.Sin => SinDerivative(y),
+            ActivationFunctionType.PassThrough => PassThroughDerivative(y),
             _ => throw new ArgumentException("Invalid activation function type", nameof(type))
         };
 
@@ -51,4 +53,8 @@ public static class ActivationFunctions
 
     public static float SinDerivative(float y) =>
         (float)Math.Cos(Math.Asin(y));
+
+    public static float PassThrough(float x) => x;
+
+    public static float PassThroughDerivative(float y) => 1f;
 }
