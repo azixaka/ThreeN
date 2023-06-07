@@ -41,6 +41,8 @@ public readonly struct Matrix<T> where T : INumber<T>
             throw new ArgumentOutOfRangeException($"The number of elements in the data array is not consistent with the specified number of rows and columns.");
     }
 
+    public ref T this[int row, int column] => ref ElementAt(row, column);
+
     public ref T ElementAt(int row, int column)
     {
         if (row >= Rows || column >= Columns)

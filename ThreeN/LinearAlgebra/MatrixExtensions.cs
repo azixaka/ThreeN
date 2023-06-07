@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using ThreeN.NeuralNetwork;
 
 namespace ThreeN.LinearAlgebra;
 
@@ -26,12 +27,12 @@ public static class MatrixExtensions
         for (int i = 0; i < destination.Rows; i++)
             for (int j = 0; j < destination.Columns; j++)
             {
-                destination.ElementAt(i, j) = default;
+                destination[i, j] = default;
 
                 for (int k = 0; k < n; k++)
                 {
-                    // i (k * k) j
-                    destination.ElementAt(i, j) += a.ElementAt(i, k) * b.ElementAt(k, j);
+                    // i (k * k] j
+                    destination[i, j] += a[i, k] * b[k, j];
                 }
             }
     }
@@ -41,7 +42,7 @@ public static class MatrixExtensions
         for (int i = 0; i < matrix.Rows; i++)
             for (int j = 0; j < matrix.Columns; j++)
             {
-                matrix.ElementAt(i, j) = Random.Shared.NextSingle() * (high - low) + low;
+                matrix[i, j] = Random.Shared.NextSingle() * (high - low) + low;
             }
     }
 
@@ -50,16 +51,16 @@ public static class MatrixExtensions
         for (int i = 0; i < matrix.Rows; i++)
             for (int j = 0; j < matrix.Columns; j++)
             {
-                matrix.ElementAt(i, j) = value;
+                matrix[i, j] = value;
             }
     }
 
-    public static void Activate(ref Matrix<float> matrix, Func<float, float> activation)
+    public static void Activate(ref Matrix<float> matrix, ActivationFunctionType activationType)
     {
         for (int i = 0; i < matrix.Rows; i++)
             for (int j = 0; j < matrix.Columns; j++)
             {
-                matrix.ElementAt(i, j) = activation(matrix.ElementAt(i, j));
+                matrix[i, j] = ActivationFunctions.Activate(matrix[i, j], activationType);
             }
     }   
 }
