@@ -31,57 +31,37 @@ Install-Package ThreeN
 Here is a basic usage example:
 
 ```csharp
-	var rawData = new float[]
+	 var rawData = new float[]
         {
             0, 0, 0,
             0, 1, 1,
             1, 0, 1,
-            1, 1, 0,
+            1, 1, 2,
+            2, 2, 4,
+            3, 2, 5,
+            4, 3, 7,
+            5, 5, 10
         };
 
-        var inData = new Matrix<float>(4, 2, 0, 3, rawData);
-        var outData = new Matrix<float>(4, 1, 2, 3, rawData);
-        
-        var configuration = new[] { 2, 10, 10, 10, 1 };
-        var nn = NeuralNetwork.Create(configuration);
-        NeuralNetworkExtensions.Randomise(nn, 0, 1);
+		// split into Input Parameters Data
+        var inData = new Matrix<float>(rawData.Length / 3, 2, 0, 3, rawData);
+		
+		// and Expected Output Data
+        var outData = new Matrix<float>(rawData.Length / 3, 1, 2, 3, rawData);
 
-        TryAllData(inData, nn);
+        var configuration = new[] { 2, 2, 1 }; // 2 inputs, 2 neurons in the hidden layer, 1 output in the output layer
+		
+		// Each layer can have its own activation function
+        var activations = new[] { ActivationFunctionType.Relu, ActivationFunctionType.PassThrough };
 
-        var cost = NeuralNetworkExtensions.Cost(nn, inData, outData);
-        Console.WriteLine($"Pre-training cost: {cost}");
-
-        var nng = NeuralNetwork.Create(configuration);
-
-        var sw = Stopwatch.StartNew();
-
-        for (int i = 0; i < 10_000; i++)
-        {         
-            NeuralNetworkExtensions.BackPropagation(nn, nng, inData, outData);
-            NeuralNetworkExtensions.Train(nn, nng, 1f);
-        }
-
-        sw.Stop();
-        cost = NeuralNetworkExtensions.Cost(nn, inData, outData);
-        Console.WriteLine($"Post-training cost: {cost}; Elapsed: {sw.Elapsed.TotalMilliseconds}ms");
-
-        TryAllData(inData, nn);
-
-        static void TryAllData(Matrix<float> inData, NeuralNetwork nn)
-        {
-            for (int i = 0; i < inData.Rows; i++)
-            {
-                inData.CopyRow(nn.InputLayer, i);
-
-                NeuralNetworkExtensions.Forward(nn);
-
-                for (int j = 0; j < inData.Columns; j++)
-                {
-                    Console.Write($"{inData.ElementAt(i, j)} ");
-                }
-
-                Console.WriteLine($"{nn.OutputLayer.ElementAt(0, 0)}");
-            }
+        var nn = NeuralNetwork.Create(activations, configuration);
+		NeuralNetworkExtensions.HeInitialise(nn); // Supports He, Xavier, Random with low-high
+        var gradient = NeuralNetwork.Create(activations, configuration);
+		
+		for (int i = 0; i < 10_000; i++) // epochs
+        {        
+            NeuralNetworkExtensions.BackPropagation(nn, gradient, inData, outData);
+            NeuralNetworkExtensions.Train(nn, gradient, 1e-3f); // learning rate
         }
 ```
 
