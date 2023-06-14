@@ -9,7 +9,7 @@ public sealed class NeuralNetwork
     public Matrix<float>[] Activations { get; init; }
     public ActivationFunctionType[] ActivationFunctions { get; init; }
 
-    private NeuralNetwork(Matrix<float>[] weights, Matrix<float>[] biases, Matrix<float>[] activations, ActivationFunctionType[] activationFunctions)
+    internal NeuralNetwork(Matrix<float>[] weights, Matrix<float>[] biases, Matrix<float>[] activations, ActivationFunctionType[] activationFunctions)
     {
         Weights = weights;
         Biases = biases;

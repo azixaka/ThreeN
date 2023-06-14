@@ -31,11 +31,11 @@ sealed class Program
         var activations = new[] { ActivationFunctionType.Sigmoid, ActivationFunctionType.Sigmoid };
 
         var nn = NeuralNetwork.Create(activations, configuration);
-        //NeuralNetworkExtensions.Randomise(nn, 0, 1);
-        NeuralNetworkExtensions.XavierInitialise(nn);
+        NeuralNetworkExtensions.Randomise(nn, 0, 1);
+        //NeuralNetworkExtensions.XavierInitialise(nn);
         var nng = NeuralNetwork.Create(activations, configuration);
 
-        ProcessNN("XOR", inData, outData, nn, nng, 100_000, 1f);
+        ProcessNN("XOR", inData, outData, nn, nng, 1_000_000, 1f);
     }
 
     private static void LinearNN()
@@ -55,7 +55,7 @@ sealed class Program
         var inData = new Matrix<float>(rawData.Length / 3, 2, 0, 3, rawData);
         var outData = new Matrix<float>(rawData.Length / 3, 1, 2, 3, rawData);
 
-        var configuration = new[] { 2, 2, 1 };
+        var configuration = new[] { 2, 5, 1 };
         var activations = new[] { ActivationFunctionType.Relu, ActivationFunctionType.PassThrough };
 
         var nn = NeuralNetwork.Create(activations, configuration);
@@ -63,7 +63,7 @@ sealed class Program
         NeuralNetworkExtensions.HeInitialise(nn);
         var nng = NeuralNetwork.Create(activations, configuration);
 
-        ProcessNN("Linear", inData, outData, nn, nng, 100_000, 1e-3f);
+        ProcessNN("Linear", inData, outData, nn, nng, 1_000_000, 1e-3f);
     }
 
     private static void ProcessNN(string name, Matrix<float> inData, Matrix<float> outData, NeuralNetwork nn, NeuralNetwork gradient, int epochs, float learningRate)
@@ -83,7 +83,7 @@ sealed class Program
         for (int i = 0; i < epochs; i++)
         {
             //NeuralNetworkExtensions.FiniteDifference(nn, gradient, 1e-3f, inData, outData);
-            NeuralNetworkExtensions.BackPropagation(nn, gradient, inData, outData);
+            NeuralNetworkExtensions.BackPropagation(nn, gradient, inData, outData, false);
             NeuralNetworkExtensions.Train(nn, gradient, learningRate);
         }
 

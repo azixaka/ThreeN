@@ -22,7 +22,7 @@ public static class NeuralNetworkExtensions
         }
     }
 
-    public static void BackPropagation(NeuralNetwork nn, NeuralNetwork gradient, Matrix<float> inData, Matrix<float> outData)
+    public static void BackPropagation(NeuralNetwork nn, NeuralNetwork gradient, Matrix<float> inData, Matrix<float> outData, bool lowPenetration = true)
     {
         if (inData.Rows != outData.Rows)
             throw new ArgumentException("Number of samples in input and output data must be equal");
@@ -39,6 +39,8 @@ public static class NeuralNetworkExtensions
 
         Fill(gradient, 0);
 
+        var propagationMultiplier = lowPenetration ? 1 : 2;
+
         for (int i = 0; i < n; i++)
         {
             inData.CopyRow(nn.InputLayer, i);
@@ -51,7 +53,7 @@ public static class NeuralNetworkExtensions
 
             for (int j = 0; j < outData.Columns; j++)
             {
-                gradient.OutputLayer[0, j] = 2 * (nn.OutputLayer[0, j] - outData[i, j]);
+                gradient.OutputLayer[0, j] = (lowPenetration ? 2 : 1) * (nn.OutputLayer[0, j] - outData[i, j]);
             }
 
             for (int l = nn.Weights.Length; l > 0; l--)
@@ -62,7 +64,7 @@ public static class NeuralNetworkExtensions
                     float da = gradient.Activations[l][0, j];
                     var activationFunctionType = nn.ActivationFunctions[l - 1];
                     float qa = ActivationFunctions.Derivative(a, activationFunctionType);
-                    float q = da * qa;
+                    float q = propagationMultiplier * da * qa;
 
                     gradient.Biases[l - 1][0, j] += q;
 

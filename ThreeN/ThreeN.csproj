@@ -1,9 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net7.0</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<OutputType>Library</OutputType>
+		<IsPackable>true</IsPackable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<PackageId>ThreeN</PackageId>
+		<Version>0.1.0</Version>
+		<Company>Azik Gudratov</Company>
+		<Authors>Azik Gudratov</Authors>
+		<PackageDescription>ThreeN Neural Network Library for .NET</PackageDescription>
+		<RepositoryUrl>https://github.com/azixaka/Berberis</RepositoryUrl>
+		<PackageIcon>ThreeN.jpeg</PackageIcon>
+	</PropertyGroup>
 
+	<ItemGroup>
+		<None Include="ThreeN.jpeg" Pack="true" PackagePath="" />
+	</ItemGroup>
 </Project>

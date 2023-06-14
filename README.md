@@ -31,7 +31,7 @@ Install-Package ThreeN
 Here is a basic usage example:
 
 ```csharp
-	 var rawData = new float[]
+	var rawData = new float[]
         {
             0, 0, 0,
             0, 1, 1,
