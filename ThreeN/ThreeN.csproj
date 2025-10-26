@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net7.0</TargetFramework>
+		<TargetFramework>net9.0</TargetFramework>
 		<LangVersion>latest</LangVersion>
 		<OutputType>Library</OutputType>
 		<IsPackable>true</IsPackable>
@@ -13,12 +13,21 @@
 		<Version>0.1.0</Version>
 		<Company>Azik Gudratov</Company>
 		<Authors>Azik Gudratov</Authors>
-		<PackageDescription>ThreeN Neural Network Library for .NET</PackageDescription>
-		<RepositoryUrl>https://github.com/azixaka/Berberis</RepositoryUrl>
+		<PackageDescription>ThreeN Neural Network Library for .NET - A versatile neural network library that simplifies creating and training neural networks with support for various activation functions, weight initialization methods (Xavier, He), and optimizers (SGD, Adam, RMSProp, Momentum). Includes backpropagation and matrix operations.</PackageDescription>
+		<PackageTags>neural-network;machine-learning;deep-learning;ai;artificial-intelligence;backpropagation;dotnet;neural-networks;ml;training;activation-functions;adam;sgd;rmsprop</PackageTags>
+		<PackageProjectUrl>https://github.com/azixaka/ThreeN</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/azixaka/ThreeN</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
 		<PackageIcon>ThreeN.jpeg</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<None Include="ThreeN.jpeg" Pack="true" PackagePath="" />
+		<None Include="..\README.md" Pack="true" PackagePath="" />
 	</ItemGroup>
 </Project>

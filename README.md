@@ -28,41 +28,91 @@ Install-Package ThreeN
 
 ## Quick Start
 
-Here is a basic usage example:
+Here is a basic usage example using the fluent API:
 
 ```csharp
-	var rawData = new float[]
-        {
-            0, 0, 0,
-            0, 1, 1,
-            1, 0, 1,
-            1, 1, 2,
-            2, 2, 4,
-            3, 2, 5,
-            4, 3, 7,
-            5, 5, 10
-        };
+using ThreeN.LinearAlgebra;
+using ThreeN.NeuralNetwork;
 
-		// split into Input Parameters Data
-        var inData = new Matrix<float>(rawData.Length / 3, 2, 0, 3, rawData);
-		
-		// and Expected Output Data
-        var outData = new Matrix<float>(rawData.Length / 3, 1, 2, 3, rawData);
+var rawData = new float[]
+{
+    0, 0, 0,
+    0, 1, 1,
+    1, 0, 1,
+    1, 1, 2,
+    2, 2, 4,
+    3, 2, 5,
+    4, 3, 7,
+    5, 5, 10
+};
 
-        var configuration = new[] { 2, 2, 1 }; // 2 inputs, 2 neurons in the hidden layer, 1 output in the output layer
-		
-		// Each layer can have its own activation function
-        var activations = new[] { ActivationFunctionType.Relu, ActivationFunctionType.PassThrough };
+// Split into Input Parameters Data
+var inputs = new Matrix<float>(rawData.Length / 3, 2, 0, 3, rawData);
 
-        var nn = NeuralNetwork.Create(activations, configuration);
-		NeuralNetworkExtensions.HeInitialise(nn); // Supports He, Xavier, Random with low-high
-        var gradient = NeuralNetwork.Create(activations, configuration);
-		
-		for (int i = 0; i < 10_000; i++) // epochs
-        {        
-            NeuralNetworkExtensions.BackPropagation(nn, gradient, inData, outData);
-            NeuralNetworkExtensions.Train(nn, gradient, 1e-3f); // learning rate
-        }
+// And Expected Output Data
+var outputs = new Matrix<float>(rawData.Length / 3, 1, 2, 3, rawData);
+
+// Build network with fluent API: 2 inputs → 5 hidden (ReLU) → 1 output (Linear)
+var network = new NeuralNetworkBuilder()
+    .WithInputs(2)
+    .WithHiddenLayer(5, ActivationFunctionType.Relu)
+    .WithOutputLayer(1, ActivationFunctionType.PassThrough)
+    .WithInitialization(WeightInitialization.He) // He, Xavier, or Random
+    .Build();
+
+// Create gradient structure for training
+var gradient = Gradient.CreateFor(network);
+
+// Train the network
+for (int epoch = 0; epoch < 10_000; epoch++)
+{
+    NeuralNetworkExtensions.BackPropagation(network, gradient, inputs, outputs);
+    network.ApplyGradient(gradient, learningRate: 1e-3f);
+}
+
+// Use the trained network
+inputs.CopyRow(network.InputLayer, rowIndex: 0);
+network.Forward();
+Console.WriteLine($"Prediction: {network.OutputLayer[0, 0]}");
+```
+
+### XOR Example
+
+```csharp
+var xorData = new float[]
+{
+    0, 0, 0,
+    0, 1, 1,
+    1, 0, 1,
+    1, 1, 0,
+};
+
+var inputs = new Matrix<float>(4, 2, 0, 3, xorData);
+var outputs = new Matrix<float>(4, 1, 2, 3, xorData);
+
+// Build XOR network: 2 inputs → 2 hidden (Sigmoid) → 1 output (Sigmoid)
+var network = new NeuralNetworkBuilder()
+    .WithInputs(2)
+    .WithHiddenLayer(2, ActivationFunctionType.Sigmoid)
+    .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+    .WithInitialization(WeightInitialization.Xavier)
+    .Build();
+
+var gradient = Gradient.CreateFor(network);
+
+for (int epoch = 0; epoch < 100_000; epoch++)
+{
+    NeuralNetworkExtensions.BackPropagation(network, gradient, inputs, outputs);
+    network.ApplyGradient(gradient, learningRate: 1f);
+}
+
+// Test the network
+for (int i = 0; i < inputs.Rows; i++)
+{
+    inputs.CopyRow(network.InputLayer, i);
+    network.Forward();
+    Console.WriteLine($"{inputs[i, 0]} XOR {inputs[i, 1]} = {network.OutputLayer[0, 0]:F4}");
+}
 ```
 
 License

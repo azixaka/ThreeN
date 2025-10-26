@@ -1,28 +1,20 @@
-﻿using ThreeN.LinearAlgebra;
+using System.Threading.Tasks;
+using ThreeN.LinearAlgebra;
 
 namespace ThreeN.NeuralNetwork;
 
 public static class NeuralNetworkExtensions
 {
-    public static void Train(NeuralNetwork nn, NeuralNetwork gradient, float rate)
-    {
-        for (int i = 0; i < nn.Weights.Length; i++)
-        {
-            for (int j = 0; j < nn.Weights[i].Rows; j++)
-                for (int k = 0; k < nn.Weights[i].Columns; k++)
-                {
-                    nn.Weights[i][j, k] -= rate * gradient.Weights[i][j, k];
-                }
-
-            for (int j = 0; j < nn.Biases[i].Rows; j++)
-                for (int k = 0; k < nn.Biases[i].Columns; k++)
-                {
-                    nn.Biases[i][j, k] -= rate * gradient.Biases[i][j, k];
-                }
-        }
-    }
-
-    public static void BackPropagation(NeuralNetwork nn, NeuralNetwork gradient, Matrix<float> inData, Matrix<float> outData, bool lowPenetration = true)
+    /// <summary>
+    /// Computes gradients via backpropagation with optional parallelization for large batches.
+    /// </summary>
+    /// <param name="l2Lambda">L2 regularization strength (0 = no regularization).</param>
+    /// <remarks>
+    /// Parallelizes batch processing when n >= 100 samples.
+    /// Uses thread-local gradients and networks to avoid contention.
+    /// Expected speedup: 2-8x on multi-core CPUs for large batches.
+    /// </remarks>
+    public static void BackPropagation(NeuralNetwork nn, Gradient gradient, Matrix<float> inData, Matrix<float> outData, float l2Lambda = 0f, bool lowPenetration = true)
     {
         if (inData.Rows != outData.Rows)
             throw new ArgumentException("Number of samples in input and output data must be equal");
@@ -32,19 +24,35 @@ public static class NeuralNetworkExtensions
 
         var n = inData.Rows; // number of samples
 
-        // i - current sample
-        // l - current layer
-        // j - current activation
-        // k - previous activation
+        // Threshold: only parallelize if benefit > overhead
+        const int PARALLEL_THRESHOLD = 100;
 
-        Fill(gradient, 0);
+        if (n < PARALLEL_THRESHOLD)
+        {
+            // Sequential for small batches (avoid threading overhead)
+            BackPropagationSequential(nn, gradient, inData, outData, l2Lambda, lowPenetration);
+        }
+        else
+        {
+            // Parallel for large batches
+            BackPropagationParallel(nn, gradient, inData, outData, l2Lambda, lowPenetration);
+        }
+    }
 
+    /// <summary>
+    /// Sequential backpropagation implementation.
+    /// </summary>
+    private static void BackPropagationSequential(NeuralNetwork nn, Gradient gradient, Matrix<float> inData, Matrix<float> outData, float l2Lambda, bool lowPenetration)
+    {
+        var n = inData.Rows;
         var propagationMultiplier = lowPenetration ? 1 : 2;
+
+        gradient.Fill(0);
 
         for (int i = 0; i < n; i++)
         {
             inData.CopyRow(nn.InputLayer, i);
-            Forward(nn);
+            nn.Forward();
 
             for (int j = 0; j < nn.Activations.Length; j++)
             {
@@ -53,7 +61,7 @@ public static class NeuralNetworkExtensions
 
             for (int j = 0; j < outData.Columns; j++)
             {
-                gradient.OutputLayer[0, j] = (lowPenetration ? 2 : 1) * (nn.OutputLayer[0, j] - outData[i, j]);
+                gradient.Activations[nn.Activations.Length - 1][0, j] = (lowPenetration ? 2 : 1) * (nn.OutputLayer[0, j] - outData[i, j]);
             }
 
             for (int l = nn.Weights.Length; l > 0; l--)
@@ -79,12 +87,13 @@ public static class NeuralNetworkExtensions
             }
         }
 
+        // Average gradients and add L2 regularization term
         for (int i = 0; i < gradient.Weights.Length; i++)
         {
             for (int j = 0; j < gradient.Weights[i].Rows; j++)
                 for (int k = 0; k < gradient.Weights[i].Columns; k++)
                 {
-                    gradient.Weights[i][j, k] /= n;
+                    gradient.Weights[i][j, k] = gradient.Weights[i][j, k] / n + l2Lambda * nn.Weights[i][j, k];
                 }
 
             for (int j = 0; j < gradient.Biases[i].Rows; j++)
@@ -95,10 +104,120 @@ public static class NeuralNetworkExtensions
         }
     }
 
-    public static void FiniteDifference(NeuralNetwork nn, NeuralNetwork gradient, float eps, Matrix<float> inData, Matrix<float> outData)
+    /// <summary>
+    /// Parallel backpropagation implementation for large batches.
+    /// </summary>
+    private static void BackPropagationParallel(NeuralNetwork nn, Gradient gradient, Matrix<float> inData, Matrix<float> outData, float l2Lambda, bool lowPenetration)
+    {
+        var n = inData.Rows;
+        var propagationMultiplier = lowPenetration ? 1 : 2;
+
+        gradient.Fill(0);
+
+        // Thread-local storage for gradients and networks
+        var threadLocalData = new ThreadLocal<(NeuralNetwork localNN, Gradient localGrad)>(() =>
+        {
+            var layerSizes = new int[nn.Activations.Length];
+            for (int i = 0; i < layerSizes.Length; i++)
+                layerSizes[i] = nn.Activations[i].Columns;
+
+            var localNN = NeuralNetwork.Create(nn.ActivationFunctions, layerSizes);
+            var localGrad = Gradient.CreateFor(localNN);
+
+            // Copy weights from main network to local network
+            for (int i = 0; i < nn.Weights.Length; i++)
+            {
+                Array.Copy(nn.Weights[i].Data, localNN.Weights[i].Data, nn.Weights[i].Data.Length);
+                Array.Copy(nn.Biases[i].Data, localNN.Biases[i].Data, nn.Biases[i].Data.Length);
+            }
+
+            localGrad.Fill(0);
+
+            return (localNN, localGrad);
+        }, trackAllValues: true);
+
+        // Parallel gradient computation
+        Parallel.For(0, n, i =>
+        {
+            var (localNN, localGrad) = threadLocalData.Value!;
+
+            inData.CopyRow(localNN.InputLayer, i);
+            localNN.Forward();
+
+            for (int j = 0; j < localNN.Activations.Length; j++)
+            {
+                MatrixExtensions.Fill(ref localGrad.Activations[j], 0);
+            }
+
+            for (int j = 0; j < outData.Columns; j++)
+            {
+                localGrad.Activations[localNN.Activations.Length - 1][0, j] = (lowPenetration ? 2 : 1) * (localNN.OutputLayer[0, j] - outData[i, j]);
+            }
+
+            for (int l = localNN.Weights.Length; l > 0; l--)
+            {
+                for (int j = 0; j < localNN.Activations[l].Columns; j++)
+                {
+                    float a = localNN.Activations[l][0, j];
+                    float da = localGrad.Activations[l][0, j];
+                    var activationFunctionType = localNN.ActivationFunctions[l - 1];
+                    float qa = ActivationFunctions.Derivative(a, activationFunctionType);
+                    float q = propagationMultiplier * da * qa;
+
+                    localGrad.Biases[l - 1][0, j] += q;
+
+                    for (int k = 0; k < localNN.Activations[l - 1].Columns; k++)
+                    {
+                        float pa = localNN.Activations[l - 1][0, k];
+                        float w = localNN.Weights[l - 1][k, j];
+                        localGrad.Weights[l - 1][k, j] += q * pa;
+                        localGrad.Activations[l - 1][0, k] += q * w;
+                    }
+                }
+            }
+        });
+
+        // Merge thread-local gradients into main gradient
+        foreach (var (_, localGrad) in threadLocalData.Values)
+        {
+            for (int layer = 0; layer < gradient.Weights.Length; layer++)
+            {
+                for (int i = 0; i < gradient.Weights[layer].Rows; i++)
+                    for (int j = 0; j < gradient.Weights[layer].Columns; j++)
+                        gradient.Weights[layer][i, j] += localGrad.Weights[layer][i, j];
+
+                for (int i = 0; i < gradient.Biases[layer].Rows; i++)
+                    for (int j = 0; j < gradient.Biases[layer].Columns; j++)
+                        gradient.Biases[layer][i, j] += localGrad.Biases[layer][i, j];
+            }
+        }
+
+        threadLocalData.Dispose();
+
+        // Average gradients and add L2 regularization term
+        for (int i = 0; i < gradient.Weights.Length; i++)
+        {
+            for (int j = 0; j < gradient.Weights[i].Rows; j++)
+                for (int k = 0; k < gradient.Weights[i].Columns; k++)
+                {
+                    gradient.Weights[i][j, k] = gradient.Weights[i][j, k] / n + l2Lambda * nn.Weights[i][j, k];
+                }
+
+            for (int j = 0; j < gradient.Biases[i].Rows; j++)
+                for (int k = 0; k < gradient.Biases[i].Columns; k++)
+                {
+                    gradient.Biases[i][j, k] /= n;
+                }
+        }
+    }
+
+    /// <summary>
+    /// Computes gradients using finite difference method (for gradient checking).
+    /// </summary>
+    public static void FiniteDifference(NeuralNetwork nn, Gradient gradient, float eps, Matrix<float> inData, Matrix<float> outData)
     {
         float saved;
-        float cost = Cost(nn, inData, outData);
+        float cost = nn.ComputeCost(inData, outData);
 
         for (int i = 0; i < nn.Weights.Length; i++)
         {
@@ -108,7 +227,7 @@ public static class NeuralNetworkExtensions
                     saved = nn.Weights[i][j, k];
 
                     nn.Weights[i][j, k] += eps;
-                    gradient.Weights[i][j, k] = (Cost(nn, inData, outData) - cost) / eps;
+                    gradient.Weights[i][j, k] = (nn.ComputeCost(inData, outData) - cost) / eps;
                     nn.Weights[i][j, k] = saved;
                 }
 
@@ -118,95 +237,9 @@ public static class NeuralNetworkExtensions
                     saved = nn.Biases[i][j, k];
 
                     nn.Biases[i][j, k] += eps;
-                    gradient.Biases[i][j, k] = (Cost(nn, inData, outData) - cost) / eps;
+                    gradient.Biases[i][j, k] = (nn.ComputeCost(inData, outData) - cost) / eps;
                     nn.Biases[i][j, k] = saved;
                 }
-        }
-    }
-
-    public static float Cost(NeuralNetwork nn, Matrix<float> inData, Matrix<float> outData)
-    {
-        float cost = 0;
-
-        for (int i = 0; i < inData.Rows; i++)
-        {
-            inData.CopyRow(nn.InputLayer, i);
-            Forward(nn);
-
-            for (int j = 0; j < outData.Columns; j++)
-            {
-                var d = nn.OutputLayer[0, j] - outData[i, j];
-                cost += d * d;
-            }
-        }
-
-        return cost / inData.Rows;
-    }
-
-    public static void Forward(NeuralNetwork nn)
-    {
-        for (int i = 0; i < nn.Weights.Length; i++)
-        {
-            MatrixExtensions.DotProduct(nn.Activations[i + 1], nn.Activations[i], nn.Weights[i]);
-            nn.Activations[i + 1].Add(ref nn.Biases[i]);
-            MatrixExtensions.Activate(ref nn.Activations[i + 1], nn.ActivationFunctions[i]);
-        }
-    }
-
-    public static void Fill(NeuralNetwork nn, float value)
-    {
-        for (int i = 0; i < nn.Weights.Length; i++)
-        {
-            MatrixExtensions.Fill(ref nn.Weights[i], value);
-            MatrixExtensions.Fill(ref nn.Biases[i], value);
-            MatrixExtensions.Fill(ref nn.Activations[i], value);
-        }
-
-        MatrixExtensions.Fill(ref nn.Activations[nn.Weights.Length], value);
-    }
-
-    public static void Randomise(NeuralNetwork nn, float low, float high)
-    {
-        for (int i = 0; i < nn.Weights.Length; i++)
-        {
-            MatrixExtensions.Randomise(ref nn.Weights[i], low, high);
-            MatrixExtensions.Randomise(ref nn.Biases[i], low, high);
-        }
-    }
-
-    public static void XavierInitialise(NeuralNetwork nn)
-    {
-        var rand = new Random();
-        for (int i = 0; i < nn.Weights.Length; i++)
-        {
-            float fan_in = nn.Weights[i].Rows;
-            float fan_out = nn.Weights[i].Columns;
-            float limit = (float)Math.Sqrt(6.0 / (fan_in + fan_out));
-
-            for (int j = 0; j < nn.Weights[i].Rows; j++)
-                for (int k = 0; k < nn.Weights[i].Columns; k++)
-                {
-                    nn.Weights[i][j, k] = 2 * limit * (float)rand.NextDouble() - limit;
-                }
-
-            MatrixExtensions.Fill(ref nn.Biases[i], 0);
-        }
-    }
-
-    public static void HeInitialise(NeuralNetwork nn)
-    {
-        var rand = new Random();
-        for (int i = 0; i < nn.Weights.Length; i++)
-        {
-            float fan_in = nn.Weights[i].Rows;
-
-            for (int j = 0; j < nn.Weights[i].Rows; j++)
-                for (int k = 0; k < nn.Weights[i].Columns; k++)
-                {
-                    nn.Weights[i][j, k] = (float)(rand.NextDouble() * Math.Sqrt(2.0 / fan_in));
-                }
-
-            MatrixExtensions.Fill(ref nn.Biases[i], 0);
         }
     }
 }

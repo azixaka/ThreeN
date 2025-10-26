@@ -1,7 +1,8 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Numerics;
 using ThreeN.LinearAlgebra;
 using ThreeN.NeuralNetwork;
+using ThreeN.NeuralNetwork.Optimizers;
 
 sealed class Program
 {
@@ -9,10 +10,14 @@ sealed class Program
     {
         XorNN();
         LinearNN();
+
+        Console.WriteLine("\n=== NEW ADVANCED FEATURES ===\n");
+        XorWithAdamOptimizer();
+        XorWithTrainerAndEarlyStopping();
     }
 
-    //Sigmoid, Tahn -> Xavier
-    //Relu -> He
+    // Sigmoid, Tanh -> Xavier
+    // Relu -> He
 
     private static void XorNN()
     {
@@ -27,15 +32,17 @@ sealed class Program
         var inData = new Matrix<float>(rawData.Length / 3, 2, 0, 3, rawData);
         var outData = new Matrix<float>(rawData.Length / 3, 1, 2, 3, rawData);
 
-        var configuration = new[] { 2, 2, 1 };
-        var activations = new[] { ActivationFunctionType.Sigmoid, ActivationFunctionType.Sigmoid };
+        // New fluent API
+        var nn = new NeuralNetworkBuilder()
+            .WithInputs(2)
+            .WithHiddenLayer(2, ActivationFunctionType.Sigmoid)
+            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithInitialization(WeightInitialization.Random)
+            .Build();
 
-        var nn = NeuralNetwork.Create(activations, configuration);
-        NeuralNetworkExtensions.Randomise(nn, 0, 1);
-        //NeuralNetworkExtensions.XavierInitialise(nn);
-        var nng = NeuralNetwork.Create(activations, configuration);
+        var gradient = Gradient.CreateFor(nn);
 
-        ProcessNN("XOR", inData, outData, nn, nng, 1_000_000, 1f);
+        ProcessNN("XOR", inData, outData, nn, gradient, 1_000_000, 1f);
     }
 
     private static void LinearNN()
@@ -55,18 +62,20 @@ sealed class Program
         var inData = new Matrix<float>(rawData.Length / 3, 2, 0, 3, rawData);
         var outData = new Matrix<float>(rawData.Length / 3, 1, 2, 3, rawData);
 
-        var configuration = new[] { 2, 5, 1 };
-        var activations = new[] { ActivationFunctionType.Relu, ActivationFunctionType.PassThrough };
+        // New fluent API with He initialization (good for ReLU)
+        var nn = new NeuralNetworkBuilder()
+            .WithInputs(2)
+            .WithHiddenLayer(5, ActivationFunctionType.Relu)
+            .WithOutputLayer(1, ActivationFunctionType.PassThrough)
+            .WithInitialization(WeightInitialization.He)
+            .Build();
 
-        var nn = NeuralNetwork.Create(activations, configuration);
-        //NeuralNetworkExtensions.Randomise(nn, -5, 5);
-        NeuralNetworkExtensions.HeInitialise(nn);
-        var nng = NeuralNetwork.Create(activations, configuration);
+        var gradient = Gradient.CreateFor(nn);
 
-        ProcessNN("Linear", inData, outData, nn, nng, 1_000_000, 1e-3f);
+        ProcessNN("Linear", inData, outData, nn, gradient, 1_000_000, 1e-3f);
     }
 
-    private static void ProcessNN(string name, Matrix<float> inData, Matrix<float> outData, NeuralNetwork nn, NeuralNetwork gradient, int epochs, float learningRate)
+    private static void ProcessNN(string name, Matrix<float> inData, Matrix<float> outData, NeuralNetwork nn, Gradient gradient, int epochs, float learningRate)
     {
         Console.WriteLine($"--------------------------------{name}--------------------------------");
 
@@ -75,7 +84,7 @@ sealed class Program
 
         TryAllData(inData, nn);
 
-        var cost = NeuralNetworkExtensions.Cost(nn, inData, outData);
+        var cost = nn.ComputeCost(inData, outData);
         Console.WriteLine($"Pre-training cost: {cost}");
 
         var sw = Stopwatch.StartNew();
@@ -83,12 +92,12 @@ sealed class Program
         for (int i = 0; i < epochs; i++)
         {
             //NeuralNetworkExtensions.FiniteDifference(nn, gradient, 1e-3f, inData, outData);
-            NeuralNetworkExtensions.BackPropagation(nn, gradient, inData, outData, false);
-            NeuralNetworkExtensions.Train(nn, gradient, learningRate);
+            NeuralNetworkExtensions.BackPropagation(nn, gradient, inData, outData, l2Lambda: 0f, lowPenetration: false);
+            nn.ApplyGradient(gradient, learningRate);
         }
 
         sw.Stop();
-        cost = NeuralNetworkExtensions.Cost(nn, inData, outData);
+        cost = nn.ComputeCost(inData, outData);
         Console.WriteLine($"Post-training cost: {cost}; Elapsed: {sw.Elapsed.TotalMilliseconds}ms");
 
         TryAllData(inData, nn);
@@ -103,7 +112,7 @@ sealed class Program
         {
             inData.CopyRow(nn.InputLayer, i);
 
-            NeuralNetworkExtensions.Forward(nn);
+            nn.Forward();
 
             for (int j = 0; j < inData.Columns; j++)
             {
@@ -128,5 +137,114 @@ sealed class Program
         }
         Console.WriteLine("]");
         Console.WriteLine();
+    }
+
+    private static void XorWithAdamOptimizer()
+    {
+        Console.WriteLine("--------------------------------XOR with Adam Optimizer--------------------------------");
+
+        var rawData = new float[]
+        {
+            0, 0, 0,
+            0, 1, 1,
+            1, 0, 1,
+            1, 1, 0,
+        };
+
+        var inData = new Matrix<float>(rawData.Length / 3, 2, 0, 3, rawData);
+        var outData = new Matrix<float>(rawData.Length / 3, 1, 2, 3, rawData);
+
+        var nn = new NeuralNetworkBuilder()
+            .WithInputs(2)
+            .WithHiddenLayer(4, ActivationFunctionType.Sigmoid)
+            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithInitialization(WeightInitialization.Xavier)
+            .Build();
+
+        var gradient = Gradient.CreateFor(nn);
+        var optimizer = new AdamOptimizer(learningRate: 0.01f);
+
+        Console.WriteLine($"Pre-training cost: {nn.ComputeCost(inData, outData)}");
+
+        var sw = Stopwatch.StartNew();
+        for (int epoch = 0; epoch < 1000; epoch++)
+        {
+            NeuralNetworkExtensions.BackPropagation(nn, gradient, inData, outData);
+            optimizer.Update(nn, gradient);
+        }
+        sw.Stop();
+
+        Console.WriteLine($"Post-training cost: {nn.ComputeCost(inData, outData)}; Elapsed: {sw.Elapsed.TotalMilliseconds}ms");
+        Console.WriteLine($"Accuracy: {nn.ComputeAccuracy(inData, outData):P0}");
+
+        TryAllData(inData, nn);
+        Console.WriteLine("----------------------------------------------------------------------------------\n");
+    }
+
+    private static void XorWithTrainerAndEarlyStopping()
+    {
+        Console.WriteLine("--------------------------------XOR with Trainer (Adam + L2 + Schedule + Early Stopping)--------------------------------");
+
+        var rawData = new float[]
+        {
+            0, 0, 0,
+            0, 1, 1,
+            1, 0, 1,
+            1, 1, 0,
+        };
+
+        var trainInputs = new Matrix<float>(rawData.Length / 3, 2, 0, 3, rawData);
+        var trainOutputs = new Matrix<float>(rawData.Length / 3, 1, 2, 3, rawData);
+
+        // Use same data for validation (in real scenarios, use different data)
+        var valInputs = trainInputs;
+        var valOutputs = trainOutputs;
+
+        var network = new NeuralNetworkBuilder()
+            .WithInputs(2)
+            .WithHiddenLayer(10, ActivationFunctionType.Sigmoid) // Overparameterized
+            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithInitialization(WeightInitialization.Xavier)
+            .Build();
+
+        var optimizer = new AdamOptimizer(learningRate: 0.01f);
+        var schedule = new StepDecaySchedule(initialRate: 0.01f, decayFactor: 0.9f, stepSize: 100);
+
+        var trainer = new Trainer(network, optimizer, schedule)
+        {
+            L2Lambda = 0.01f,           // L2 regularization to prevent overfitting
+            EarlyStoppingPatience = 20  // Stop if validation loss doesn't improve for 20 epochs
+        };
+
+        Console.WriteLine($"Pre-training cost: {network.ComputeCost(trainInputs, trainOutputs)}");
+
+        var sw = Stopwatch.StartNew();
+        trainer.Train(trainInputs, trainOutputs, valInputs, valOutputs, epochs: 1000);
+        sw.Stop();
+
+        Console.WriteLine($"Post-training cost: {network.ComputeCost(trainInputs, trainOutputs)}; Elapsed: {sw.Elapsed.TotalMilliseconds}ms");
+        Console.WriteLine($"Accuracy: {network.ComputeAccuracy(trainInputs, trainOutputs):P0}");
+        Console.WriteLine($"Epochs trained: {trainer.History.TrainLoss.Count}");
+        Console.WriteLine($"Final learning rate: {optimizer.LearningRate}");
+
+        // Show training progression
+        Console.WriteLine("\nTraining progression (first 10 and last 10 epochs):");
+        for (int i = 0; i < Math.Min(10, trainer.History.TrainLoss.Count); i++)
+        {
+            Console.WriteLine($"  Epoch {i}: Loss={trainer.History.TrainLoss[i]:F6}, Acc={trainer.History.TrainAccuracy[i]:P0}");
+        }
+
+        if (trainer.History.TrainLoss.Count > 20)
+        {
+            Console.WriteLine("  ...");
+            int start = trainer.History.TrainLoss.Count - 10;
+            for (int i = start; i < trainer.History.TrainLoss.Count; i++)
+            {
+                Console.WriteLine($"  Epoch {i}: Loss={trainer.History.TrainLoss[i]:F6}, Acc={trainer.History.TrainAccuracy[i]:P0}");
+            }
+        }
+
+        TryAllData(trainInputs, network);
+        Console.WriteLine("----------------------------------------------------------------------------------\n");
     }
 }

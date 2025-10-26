@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.Versioning;
 using ThreeN.LinearAlgebra;
 using ThreeN.NeuralNetwork;
 
@@ -9,17 +10,66 @@ sealed class Program
 {
     static void Main()
     {
-        //Train(inData, outData, "mnist\\pre-trained-mnist-model.3n", $"mnist\\{DateTime.UtcNow.Ticks}.3n", 100, 5);
-        //SplitMnistData();
-        VerifyNNOnData();
+        // Quick training test with optimizations
+        TrainNewModel();
+
+        // Verify the newly trained model works
+        VerifyNewModel();
+    }
+
+    private static void TrainNewModel()
+    {
+        Console.WriteLine("=== Training New MNIST Model (Quick Test) ===\n");
+
+        var mnistReader = new MnistReader();
+        var (inData, outData) = mnistReader.LoadData(
+            Path.Combine("mnist", "train-images.idx3-ubyte"),
+            Path.Combine("mnist", "train-labels.idx1-ubyte"));
+
+        Console.WriteLine($"Loaded training data: {inData.Rows} samples\n");
+
+        // Train from scratch (no base model) for just 3 batches to test optimizations
+        Train(inData, outData,
+            baseModelPath: null,
+            destinationModelPath: Path.Combine("mnist", "new-trained-model.3n"),
+            samplesPerBath: 100,
+            numberOfBatches: 3); // Just 3 batches for quick test
+
+        Console.WriteLine("\n=== Training Complete ===\n");
+    }
+
+    private static void VerifyNewModel()
+    {
+        Console.WriteLine("=== Verifying New Trained Model ===\n");
+
+        var mnistReader = new MnistReader();
+        var (inData, outData) = mnistReader.LoadData(
+            Path.Combine("mnist", "t10k-images.idx3-ubyte"),
+            Path.Combine("mnist", "t10k-labels.idx1-ubyte"));
+
+        var filePath = Path.Combine("mnist", "new-trained-model.3n");
+        if (File.Exists(filePath))
+        {
+            var bytes = File.ReadAllBytes(filePath);
+            var nn = NeuralNetworkSerialiser.Deserialise(bytes);
+            Console.WriteLine("New model loaded successfully!");
+            Console.WriteLine($"Testing on first 20 samples:\n");
+            TryAllData(inData, outData, nn, 20);
+        }
+        else
+        {
+            Console.WriteLine("ERROR: New model not found!");
+        }
     }
 
     private static void VerifyNNOnData()
     {
         var mnistReader = new MnistReader();
-        var (inData, outData) = mnistReader.LoadData("mnist\\t10k-images.idx3-ubyte", "mnist\\t10k-labels.idx1-ubyte");
+        var (inData, outData) = mnistReader.LoadData(
+            Path.Combine("mnist", "t10k-images.idx3-ubyte"),
+            Path.Combine("mnist", "t10k-labels.idx1-ubyte"));
 
-        var filePath = "mnist\\pre-trained-mnist-model.3n";
+        var filePath = Path.Combine("mnist", "pre-trained-mnist-model.3n");
         if (File.Exists(filePath))
         {
             var bytes = File.ReadAllBytes(filePath);
@@ -28,17 +78,19 @@ sealed class Program
         }
     }
 
+    [SupportedOSPlatform("windows")]
     private static void SplitMnistData()
     {
         var splitter = new MnistSplitter();
-        splitter.SaveDataAsFiles("mnist\\t10k-images.idx3-ubyte", "mnist\\t10k-labels.idx1-ubyte", "t10k-dataset", "t10k-dataset\\labels.csv");
+        splitter.SaveDataAsFiles(
+            Path.Combine("mnist", "t10k-images.idx3-ubyte"),
+            Path.Combine("mnist", "t10k-labels.idx1-ubyte"),
+            "t10k-dataset",
+            Path.Combine("t10k-dataset", "labels.csv"));
     }
 
-    private static ThreeN.NeuralNetwork.NeuralNetwork Train(Matrix<float> inData, Matrix<float> outData, string baseModelPath, string destinationModelPath, int samplesPerBath = 100, int? numberOfBatches = null)
+    private static ThreeN.NeuralNetwork.NeuralNetwork Train(Matrix<float> inData, Matrix<float> outData, string? baseModelPath, string destinationModelPath, int samplesPerBath = 100, int? numberOfBatches = null)
     {
-        var configuration = new[] { 784, 80, 10 };
-        var activations = new[] { ActivationFunctionType.Relu, ActivationFunctionType.Sigmoid };
-
         ThreeN.NeuralNetwork.NeuralNetwork nn;
         if (!string.IsNullOrEmpty(baseModelPath) && File.Exists(baseModelPath))
         {
@@ -47,11 +99,16 @@ sealed class Program
         }
         else
         {
-            nn = ThreeN.NeuralNetwork.NeuralNetwork.Create(activations, configuration);
-            NeuralNetworkExtensions.HeInitialise(nn);
+            // New fluent API with He initialization (good for ReLU)
+            nn = new NeuralNetworkBuilder()
+                .WithInputs(784)
+                .WithHiddenLayer(80, ActivationFunctionType.Relu)
+                .WithOutputLayer(10, ActivationFunctionType.Sigmoid)
+                .WithInitialization(WeightInitialization.He)
+                .Build();
         }
 
-        var nng = ThreeN.NeuralNetwork.NeuralNetwork.Create(activations, configuration);
+        var gradient = Gradient.CreateFor(nn);
 
         var n = numberOfBatches ?? inData.Rows / samplesPerBath; // todo: handle remainder
         var prevRunTime = 0.0;
@@ -63,7 +120,7 @@ sealed class Program
 
             var estimatedTimeLeft = TimeSpan.FromMilliseconds(prevRunTime * (n - i));
 
-            prevRunTime = ProcessNN($"MNIST {i}/{numberOfBatches} [ETA in:{estimatedTimeLeft}]", batchInData, batchOutData, nn, nng, 100, 1e-1f);
+            prevRunTime = ProcessNN($"MNIST {i}/{numberOfBatches} [ETA in:{estimatedTimeLeft}]", batchInData, batchOutData, nn, gradient, 100, 1e-1f);
         }
 
         var model = NeuralNetworkSerialiser.Serialise(nn);
@@ -72,23 +129,23 @@ sealed class Program
         return nn;
     }
 
-    private static double ProcessNN(string name, Matrix<float> inData, Matrix<float> outData, ThreeN.NeuralNetwork.NeuralNetwork nn, ThreeN.NeuralNetwork.NeuralNetwork gradient, int epochs, float learningRate)
+    private static double ProcessNN(string name, Matrix<float> inData, Matrix<float> outData, ThreeN.NeuralNetwork.NeuralNetwork nn, Gradient gradient, int epochs, float learningRate)
     {
         Console.WriteLine($"--------------------------------{name}--------------------------------");
 
-        var cost = NeuralNetworkExtensions.Cost(nn, inData, outData);
+        var cost = nn.ComputeCost(inData, outData);
         Console.WriteLine($"Pre-training cost: {cost}");
 
         var sw = Stopwatch.StartNew();
 
         for (int i = 0; i < epochs; i++)
         {
-            NeuralNetworkExtensions.BackPropagation(nn, gradient, inData, outData, true);
-            NeuralNetworkExtensions.Train(nn, gradient, learningRate);
+            NeuralNetworkExtensions.BackPropagation(nn, gradient, inData, outData, l2Lambda: 0f, lowPenetration: true);
+            nn.ApplyGradient(gradient, learningRate);
         }
 
         sw.Stop();
-        cost = NeuralNetworkExtensions.Cost(nn, inData, outData);
+        cost = nn.ComputeCost(inData, outData);
         Console.WriteLine($"Post-training cost: {cost}; Elapsed: {sw.Elapsed.TotalMilliseconds}ms");
 
         Console.WriteLine("----------------------------------------------------------------------------------");
@@ -103,7 +160,7 @@ sealed class Program
         {
             inData.CopyRow(nn.InputLayer, i);
 
-            NeuralNetworkExtensions.Forward(nn);
+            nn.Forward();
 
             Console.Write($"({i}) Expected: {OneHotToValue(outData, i)}; \t Result: ");
             Print(nn.OutputLayer);

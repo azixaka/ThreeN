@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using System.Runtime.Versioning;
 
 namespace NeuralNetwork.HandWrittenNumbers;
 
@@ -7,6 +8,7 @@ public sealed class MnistSplitter
     private const int ImageMagicNumber = 2051;
     private const int LabelMagicNumber = 2049;
 
+    [SupportedOSPlatform("windows")]
     public void SaveDataAsFiles(string imageFile, string labelFile, string imagesDirectory, string labelsFilePath)
     {
         byte[] imageBytes = File.ReadAllBytes(imageFile);
