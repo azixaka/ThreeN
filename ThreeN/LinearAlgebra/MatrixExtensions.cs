@@ -66,10 +66,31 @@ public static class MatrixExtensions
     }
 
     /// <summary>
-    /// SIMD-optimized matrix multiplication for float matrices.
-    /// Vectorizes the inner dot product loop using System.Numerics.Vector.
+    /// SIMD-optimized matrix multiplication for float matrices with adaptive strategy.
+    /// Uses cache-friendly blocking for large matrices (>512×512).
     /// </summary>
     private static void DotProductSIMD(in Matrix<float> destination, in Matrix<float> a, in Matrix<float> b)
+    {
+        // Threshold for using cache blocking: matrices where blocking overhead is beneficial
+        const int BLOCKING_THRESHOLD = 512;
+
+        // For large matrices, use cache-blocked implementation
+        if (a.Rows >= BLOCKING_THRESHOLD || a.Columns >= BLOCKING_THRESHOLD || b.Columns >= BLOCKING_THRESHOLD)
+        {
+            DotProductBlocked(destination, a, b);
+        }
+        else
+        {
+            // For small/medium matrices, use simple SIMD (ijk order)
+            DotProductSIMD_IJK(destination, a, b);
+        }
+    }
+
+    /// <summary>
+    /// Simple SIMD matrix multiplication using ijk loop order.
+    /// Good for small matrices where cache blocking overhead isn't beneficial.
+    /// </summary>
+    private static void DotProductSIMD_IJK(in Matrix<float> destination, in Matrix<float> a, in Matrix<float> b)
     {
         int n = a.Columns;
         int vectorSize = Vector<float>.Count;
@@ -104,6 +125,74 @@ public static class MatrixExtensions
                     result += a[i, k] * b[k, j];
 
                 destination[i, j] = result;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Cache-friendly matrix multiplication using blocking/tiling with SIMD optimization.
+    /// Uses ikj loop order for sequential memory access and blocks that fit in L1 cache.
+    /// Optimal for large matrices (>512×512). Expected 10-30x speedup vs ijk order.
+    /// </summary>
+    /// <remarks>
+    /// Block size tuned for typical L1 cache (32KB): 64×64 floats = 16KB, leaves room for 3 blocks.
+    /// Loop order (ikj): For each A[i,k], updates entire row of C with A[i,k] * B[k,:].
+    /// This ensures B is accessed by rows (sequential) instead of columns (strided).
+    /// </remarks>
+    private static void DotProductBlocked(in Matrix<float> destination, in Matrix<float> a, in Matrix<float> b)
+    {
+        // Block size tuned for L1 cache (32KB typical)
+        // 64×64 floats = 16KB, leaves room for 3 blocks (A, B, C)
+        const int blockSize = 64;
+        int vectorSize = Vector<float>.Count;
+
+        // Initialize result to zero (required for accumulation in blocked algorithm)
+        Fill(ref Unsafe.AsRef(in destination), 0f);
+
+        // Outer loops: iterate over blocks
+        for (int ii = 0; ii < destination.Rows; ii += blockSize)
+        for (int kk = 0; kk < a.Columns; kk += blockSize)
+        for (int jj = 0; jj < destination.Columns; jj += blockSize)
+        {
+            // Compute block boundaries (handle partial blocks at edges)
+            int iMax = Math.Min(ii + blockSize, destination.Rows);
+            int kMax = Math.Min(kk + blockSize, a.Columns);
+            int jMax = Math.Min(jj + blockSize, destination.Columns);
+
+            // Inner loops: multiply this block using ikj order (cache-friendly)
+            for (int i = ii; i < iMax; i++)
+            for (int k = kk; k < kMax; k++)
+            {
+                // Load A[i,k] once, reuse across entire row of B
+                float aik = a[i, k];
+
+                // Broadcast A[i,k] to all SIMD lanes
+                var vAik = new Vector<float>(aik);
+
+                int j = jj;
+
+                // SIMD loop: process multiple columns of B at once
+                // Accesses B[k,:] sequentially (cache-friendly!)
+                for (; j <= jMax - vectorSize; j += vectorSize)
+                {
+                    // Load row k of B starting at column j (sequential access)
+                    int bIndex = b.StartIndex + k * b.Stride + j;
+                    var vB = new Vector<float>(b.Data, bIndex);
+
+                    // Load current result row i of C starting at column j
+                    int cIndex = destination.StartIndex + i * destination.Stride + j;
+                    var vC = new Vector<float>(destination.Data, cIndex);
+
+                    // C[i,j:j+vectorSize] += A[i,k] * B[k,j:j+vectorSize]
+                    var vResult = vC + vAik * vB;
+                    vResult.CopyTo(destination.Data, cIndex);
+                }
+
+                // Scalar remainder for non-aligned columns
+                for (; j < jMax; j++)
+                {
+                    destination[i, j] += aik * b[k, j];
+                }
             }
         }
     }

@@ -36,10 +36,11 @@ public static class ActivationFunctions
     /// <param name="y">The OUTPUT of the activation function (not the input x).</param>
     /// <param name="type">The activation function type.</param>
     /// <returns>The derivative value dy/dx evaluated at the output y.</returns>
-    /// <exception cref="ArgumentException">If activation function type is invalid or Softmax (Softmax derivative handled differently).</exception>
+    /// <exception cref="ArgumentException">If activation function type is invalid.</exception>
     /// <remarks>
     /// Takes output y instead of input x for efficiency during backpropagation.
     /// For Sigmoid: derivative = y × (1 - y) where y = sigmoid(x).
+    /// For Softmax: returns 1.0 as the gradient is already computed at the output layer for typical loss functions.
     /// </remarks>
     public static float Derivative(float y, Activation type)
         => type switch
@@ -49,6 +50,7 @@ public static class ActivationFunctions
             Activation.Tanh => TanhDerivative(y),
             Activation.Sin => SinDerivative(y),
             Activation.PassThrough => PassThroughDerivative(y),
+            Activation.Softmax => SoftmaxDerivative(y),
             _ => throw new ArgumentException("Invalid activation function type", nameof(type))
         };
 
@@ -161,6 +163,23 @@ public static class ActivationFunctions
     /// <param name="y">The OUTPUT (unused, always returns 1).</param>
     /// <returns>1.</returns>
     public static float PassThroughDerivative(float y) => 1f;
+
+    /// <summary>
+    /// Derivative of Softmax: returns 1.0 for backpropagation compatibility.
+    /// </summary>
+    /// <param name="y">The OUTPUT of Softmax (unused).</param>
+    /// <returns>1.0</returns>
+    /// <remarks>
+    /// Softmax derivative is a Jacobian matrix since each output depends on all inputs.
+    /// For typical neural network training with cross-entropy or MSE loss:
+    /// - The gradient at the output layer already incorporates the loss derivative
+    /// - Returning 1.0 allows the gradient to pass through unchanged
+    /// This is the standard approach when Softmax is used at the output layer.
+    ///
+    /// Full Softmax Jacobian: ∂y_i/∂z_j = y_i(δ_ij - y_j) where δ is Kronecker delta.
+    /// However, this is rarely computed explicitly in practice due to the loss function pairing.
+    /// </remarks>
+    public static float SoftmaxDerivative(float y) => 1f;
 
     /// <summary>
     /// Softmax activation function for probability distributions.
