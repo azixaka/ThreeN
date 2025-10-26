@@ -27,9 +27,12 @@ public sealed class NeuralNetwork
 
     /// <summary>Activation function types for each layer transition.</summary>
     /// <remarks>ActivationFunctions[i] is applied after Weights[i] × Activations[i] + Biases[i].</remarks>
-    public ActivationFunctionType[] ActivationFunctions { get; init; }
+    public Activation[] ActivationFunctions { get; init; }
 
-    internal NeuralNetwork(Matrix<float>[] weights, Matrix<float>[] biases, Matrix<float>[] activations, ActivationFunctionType[] activationFunctions)
+    /// <summary>Cached gradient structure for training (lazy-initialized on first Train/TrainStep call).</summary>
+    private Gradient? _cachedGradient;
+
+    internal NeuralNetwork(Matrix<float>[] weights, Matrix<float>[] biases, Matrix<float>[] activations, Activation[] activationFunctions)
     {
         Weights = weights;
         Biases = biases;
@@ -231,6 +234,161 @@ public sealed class NeuralNetwork
     }
 
     /// <summary>
+    /// Trains the network using gradient descent for multiple epochs.
+    /// </summary>
+    /// <param name="inputs">Input data matrix (rows = samples, columns = features).</param>
+    /// <param name="outputs">Expected output data matrix (rows = samples, columns = outputs).</param>
+    /// <param name="epochs">Number of training epochs (full passes through the dataset).</param>
+    /// <param name="learningRate">Learning rate for gradient descent (typical values: 0.001-0.1).</param>
+    /// <param name="l2Lambda">L2 regularization strength (0 = no regularization, typical: 0.001-0.1).</param>
+    /// <param name="onEpochComplete">Optional callback invoked after each epoch with (epochNumber, currentLoss).</param>
+    /// <remarks>
+    /// Automatically manages gradient computation and weight updates.
+    /// Uses cached gradient structure (allocated once on first call).
+    /// For advanced training features (validation, early stopping), use <see cref="Trainer"/> class.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// // Simple training
+    /// network.Train(inputs, outputs, epochs: 10_000, learningRate: 0.001f);
+    ///
+    /// // With progress logging
+    /// network.Train(inputs, outputs, epochs: 10_000, learningRate: 0.001f,
+    ///     onEpochComplete: (epoch, loss) =>
+    ///     {
+    ///         if (epoch % 1000 == 0)
+    ///             Console.WriteLine($"Epoch {epoch}: Loss = {loss:F6}");
+    ///     });
+    /// </code>
+    /// </example>
+    public void Train(Matrix<float> inputs, Matrix<float> outputs, int epochs, float learningRate,
+        float l2Lambda = 0f, Action<int, float>? onEpochComplete = null)
+    {
+        _cachedGradient ??= Gradient.CreateFor(this);
+
+        for (int epoch = 0; epoch < epochs; epoch++)
+        {
+            NeuralNetworkExtensions.BackPropagation(this, _cachedGradient, inputs, outputs, l2Lambda);
+            ApplyGradient(_cachedGradient, learningRate);
+
+            onEpochComplete?.Invoke(epoch, ComputeCost(inputs, outputs, l2Lambda));
+        }
+    }
+
+    /// <summary>
+    /// Trains the network using a custom optimizer for multiple epochs.
+    /// </summary>
+    /// <param name="inputs">Input data matrix (rows = samples, columns = features).</param>
+    /// <param name="outputs">Expected output data matrix (rows = samples, columns = outputs).</param>
+    /// <param name="epochs">Number of training epochs (full passes through the dataset).</param>
+    /// <param name="optimizer">The optimizer to use (e.g., Adam, Momentum, SGD).</param>
+    /// <param name="l2Lambda">L2 regularization strength (0 = no regularization, typical: 0.001-0.1).</param>
+    /// <param name="onEpochComplete">Optional callback invoked after each epoch with (epochNumber, currentLoss).</param>
+    /// <remarks>
+    /// Automatically manages gradient computation and optimizer updates.
+    /// Uses cached gradient structure (allocated once on first call).
+    /// For advanced training features (validation, early stopping, learning rate schedules), use <see cref="Trainer"/> class.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// // Train with Adam optimizer
+    /// var optimizer = new AdamOptimizer(learningRate: 0.001f);
+    /// network.Train(inputs, outputs, epochs: 1000, optimizer: optimizer);
+    ///
+    /// // With progress logging
+    /// network.Train(inputs, outputs, epochs: 1000, optimizer: optimizer,
+    ///     onEpochComplete: (epoch, loss) =>
+    ///     {
+    ///         if (epoch % 100 == 0)
+    ///             Console.WriteLine($"Epoch {epoch}: Loss = {loss:F6}");
+    ///     });
+    /// </code>
+    /// </example>
+    public void Train(Matrix<float> inputs, Matrix<float> outputs, int epochs,
+        Optimizers.IOptimizer optimizer, float l2Lambda = 0f, Action<int, float>? onEpochComplete = null)
+    {
+        _cachedGradient ??= Gradient.CreateFor(this);
+
+        for (int epoch = 0; epoch < epochs; epoch++)
+        {
+            NeuralNetworkExtensions.BackPropagation(this, _cachedGradient, inputs, outputs, l2Lambda);
+            optimizer.Update(this, _cachedGradient);
+
+            onEpochComplete?.Invoke(epoch, ComputeCost(inputs, outputs, l2Lambda));
+        }
+    }
+
+    /// <summary>
+    /// Performs a single training step using gradient descent.
+    /// </summary>
+    /// <param name="inputs">Input data matrix (rows = samples, columns = features).</param>
+    /// <param name="outputs">Expected output data matrix (rows = samples, columns = outputs).</param>
+    /// <param name="learningRate">Learning rate for gradient descent (typical values: 0.001-0.1).</param>
+    /// <param name="l2Lambda">L2 regularization strength (0 = no regularization, typical: 0.001-0.1).</param>
+    /// <remarks>
+    /// Useful for custom training loops where you need fine-grained control.
+    /// Computes gradients via backpropagation and applies gradient descent update.
+    /// Uses cached gradient structure (allocated once on first call).
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// // Custom training loop
+    /// for (int epoch = 0; epoch &lt; 10_000; epoch++)
+    /// {
+    ///     network.TrainStep(inputs, outputs, learningRate: 0.001f);
+    ///
+    ///     if (epoch % 1000 == 0)
+    ///     {
+    ///         float loss = network.ComputeCost(inputs, outputs);
+    ///         Console.WriteLine($"Epoch {epoch}: Loss = {loss:F6}");
+    ///     }
+    /// }
+    /// </code>
+    /// </example>
+    public void TrainStep(Matrix<float> inputs, Matrix<float> outputs, float learningRate, float l2Lambda = 0f)
+    {
+        _cachedGradient ??= Gradient.CreateFor(this);
+        NeuralNetworkExtensions.BackPropagation(this, _cachedGradient, inputs, outputs, l2Lambda);
+        ApplyGradient(_cachedGradient, learningRate);
+    }
+
+    /// <summary>
+    /// Performs a single training step using a custom optimizer.
+    /// </summary>
+    /// <param name="inputs">Input data matrix (rows = samples, columns = features).</param>
+    /// <param name="outputs">Expected output data matrix (rows = samples, columns = outputs).</param>
+    /// <param name="optimizer">The optimizer to use (e.g., Adam, Momentum, SGD).</param>
+    /// <param name="l2Lambda">L2 regularization strength (0 = no regularization, typical: 0.001-0.1).</param>
+    /// <remarks>
+    /// Useful for custom training loops where you need fine-grained control.
+    /// Computes gradients via backpropagation and applies optimizer update.
+    /// Uses cached gradient structure (allocated once on first call).
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// var optimizer = new AdamOptimizer(learningRate: 0.001f);
+    ///
+    /// // Custom training loop
+    /// for (int epoch = 0; epoch &lt; 1000; epoch++)
+    /// {
+    ///     network.TrainStep(inputs, outputs, optimizer: optimizer);
+    ///
+    ///     if (epoch % 100 == 0)
+    ///     {
+    ///         float loss = network.ComputeCost(inputs, outputs);
+    ///         Console.WriteLine($"Epoch {epoch}: Loss = {loss:F6}");
+    ///     }
+    /// }
+    /// </code>
+    /// </example>
+    public void TrainStep(Matrix<float> inputs, Matrix<float> outputs, Optimizers.IOptimizer optimizer, float l2Lambda = 0f)
+    {
+        _cachedGradient ??= Gradient.CreateFor(this);
+        NeuralNetworkExtensions.BackPropagation(this, _cachedGradient, inputs, outputs, l2Lambda);
+        optimizer.Update(this, _cachedGradient);
+    }
+
+    /// <summary>
     /// Fills all weights, biases, and activations with a constant value.
     /// </summary>
     /// <param name="value">The value to fill with (commonly 0 for reset).</param>
@@ -338,13 +496,13 @@ public sealed class NeuralNetwork
     /// <example>
     /// <code>
     /// var nn = NeuralNetwork.Create(
-    ///     new[] { ActivationFunctionType.Relu, ActivationFunctionType.Softmax },
+    ///     new[] { Activation.Relu, Activation.Softmax },
     ///     new[] { 784, 128, 10 }
     /// );
     /// nn.InitializeHe();
     /// </code>
     /// </example>
-    public static NeuralNetwork Create(ActivationFunctionType[] activationFunctions, int[] configuration) // {2, 2, 1}
+    public static NeuralNetwork Create(Activation[] activationFunctions, int[] configuration) // {2, 2, 1}
     {
         if (configuration.Length < 2)
             throw new ArgumentException("Minimum number of layers is 2 - one for input and one for neurons");

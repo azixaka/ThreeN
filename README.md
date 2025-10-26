@@ -1,7 +1,10 @@
 # ThreeN Neural Network Library for .NET
 
-[![Build Status](https://travis-ci.org/ThreeN/ThreeN.svg?branch=master)](https://travis-ci.org/ThreeN/ThreeN)
-[![NuGet](https://img.shields.io/nuget/v/ThreeN.svg)](https://www.nuget.org/packages/ThreeN/)
+[![NuGet Version](https://img.shields.io/nuget/v/ThreeN.svg)](https://www.nuget.org/packages/ThreeN/)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/ThreeN.svg)](https://www.nuget.org/packages/ThreeN/)
+[![Build Status](https://github.com/azixaka/ThreeN/workflows/build/badge.svg)](https://github.com/azixaka/ThreeN/actions)
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](https://github.com/azixaka/ThreeN/blob/master/LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
 
 A high-performance, zero-dependency neural network library for .NET featuring SIMD vectorization, modern optimizers, and a fluent API for building and training neural networks.
 
@@ -33,48 +36,41 @@ Install-Package ThreeN
 
 ## Quick Start
 
-### Basic XOR Network
+### XOR Network (One Line!)
 
 ```csharp
 using ThreeN.LinearAlgebra;
 using ThreeN.NeuralNetwork;
 
 // Prepare XOR dataset
-var xorData = new float[]
-{
-    0, 0, 0,
-    0, 1, 1,
-    1, 0, 1,
-    1, 1, 0,
-};
+var xorData = new float[] { 0, 0, 0,  0, 1, 1,  1, 0, 1,  1, 1, 0 };
 
-var inputs = new Matrix<float>(4, 2, 0, 3, xorData);
-var outputs = new Matrix<float>(4, 1, 2, 3, xorData);
+// Create input and output matrices using clear static factories
+var inputs = Matrix<float>.FromArrayStrided(4, 2, xorData, startIndex: 0, stride: 3);
+var outputs = Matrix<float>.FromArrayStrided(4, 1, xorData, startIndex: 2, stride: 3);
 
 // Build network: 2 inputs → 2 hidden (Sigmoid) → 1 output (Sigmoid)
 var network = new NeuralNetworkBuilder()
     .WithInputs(2)
-    .WithHiddenLayer(2, ActivationFunctionType.Sigmoid)
-    .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+    .WithHiddenLayer(2, Activation.Sigmoid)
+    .WithOutputLayer(1, Activation.Sigmoid)
     .WithInitialization(WeightInitialization.Xavier)
     .Build();
 
-// Train using gradient descent
-var gradient = Gradient.CreateFor(network);
+// Train with one line! No need to manage gradients manually
+network.Train(inputs, outputs, epochs: 100_000, learningRate: 1f);
 
-for (int epoch = 0; epoch < 100_000; epoch++)
-{
-    NeuralNetworkExtensions.BackPropagation(network, gradient, inputs, outputs);
-    network.ApplyGradient(gradient, learningRate: 1f);
-}
-
-// Test the network
+// Test predictions
 for (int i = 0; i < inputs.Rows; i++)
 {
     inputs.CopyRow(network.InputLayer, i);
     network.Forward();
     Console.WriteLine($"{inputs[i, 0]} XOR {inputs[i, 1]} = {network.OutputLayer[0, 0]:F4}");
 }
+// Output: 0 XOR 0 = 0.0056
+//         0 XOR 1 = 0.9953
+//         1 XOR 0 = 0.9953
+//         1 XOR 1 = 0.0048
 ```
 
 ## Network Architecture
@@ -85,11 +81,11 @@ The builder pattern provides a clear, type-safe way to construct networks:
 
 ```csharp
 var network = new NeuralNetworkBuilder()
-    .WithInputs(784)                                    // MNIST: 28×28 pixels
-    .WithHiddenLayer(128, ActivationFunctionType.Relu)  // Hidden layer
-    .WithHiddenLayer(64, ActivationFunctionType.Relu)   // Another hidden layer
-    .WithOutputLayer(10, ActivationFunctionType.Softmax) // 10 classes
-    .WithInitialization(WeightInitialization.He)        // He init for ReLU
+    .WithInputs(784)                            // MNIST: 28×28 pixels
+    .WithHiddenLayer(128, Activation.Relu)      // Hidden layer
+    .WithHiddenLayer(64, Activation.Relu)       // Another hidden layer
+    .WithOutputLayer(10, Activation.Softmax)    // 10 classes
+    .WithInitialization(WeightInitialization.He) // He init for ReLU
     .Build();
 ```
 
@@ -119,58 +115,75 @@ var network = new NeuralNetworkBuilder()
 
 ## Training
 
-### Manual Training Loop
+### Simple Training (Recommended for Beginners)
 
 ```csharp
 var network = new NeuralNetworkBuilder()
     .WithInputs(2)
-    .WithHiddenLayer(5, ActivationFunctionType.Relu)
-    .WithOutputLayer(1, ActivationFunctionType.PassThrough)
+    .WithHiddenLayer(5, Activation.Relu)
+    .WithOutputLayer(1, Activation.PassThrough)
     .WithInitialization(WeightInitialization.He)
     .Build();
 
-var gradient = Gradient.CreateFor(network);
+// Simplest: Just train!
+network.Train(trainInputs, trainOutputs, epochs: 10_000, learningRate: 0.001f);
 
-for (int epoch = 0; epoch < 10_000; epoch++)
-{
-    // Compute gradients via backpropagation
-    NeuralNetworkExtensions.BackPropagation(network, gradient, trainInputs, trainOutputs);
-
-    // Update weights using gradient descent
-    network.ApplyGradient(gradient, learningRate: 0.001f);
-
-    // Monitor progress
-    if (epoch % 1000 == 0)
+// With progress logging
+network.Train(trainInputs, trainOutputs, epochs: 10_000, learningRate: 0.001f,
+    onEpochComplete: (epoch, loss) =>
     {
-        float cost = network.ComputeCost(trainInputs, trainOutputs);
-        Console.WriteLine($"Epoch {epoch}: Cost = {cost:F6}");
-    }
-}
+        if (epoch % 1000 == 0)
+            Console.WriteLine($"Epoch {epoch}: Loss = {loss:F6}");
+    });
 ```
 
-### Advanced Training with Optimizers
+### Training with Modern Optimizers
 
 ```csharp
 using ThreeN.NeuralNetwork.Optimizers;
 
 var network = new NeuralNetworkBuilder()
     .WithInputs(784)
-    .WithHiddenLayer(128, ActivationFunctionType.Relu)
-    .WithOutputLayer(10, ActivationFunctionType.Softmax)
+    .WithHiddenLayer(128, Activation.Relu)
+    .WithOutputLayer(10, Activation.Softmax)
     .WithInitialization(WeightInitialization.He)
     .Build();
 
 // Use Adam optimizer for faster convergence
 var optimizer = new AdamOptimizer(learningRate: 0.001f);
-var gradient = Gradient.CreateFor(network);
 
-for (int epoch = 0; epoch < 100; epoch++)
+network.Train(trainInputs, trainOutputs, epochs: 100, optimizer: optimizer,
+    onEpochComplete: (epoch, loss) =>
+    {
+        if (epoch % 10 == 0)
+        {
+            float accuracy = network.ComputeAccuracy(testInputs, testOutputs);
+            Console.WriteLine($"Epoch {epoch}: Accuracy = {accuracy:P2}");
+        }
+    });
+```
+
+### Custom Training Loop (Advanced)
+
+For maximum control, you can still use manual training:
+
+```csharp
+// Option 1: TrainStep for simple loops
+for (int epoch = 0; epoch < 10_000; epoch++)
 {
-    NeuralNetworkExtensions.BackPropagation(network, gradient, trainInputs, trainOutputs);
-    optimizer.Update(network, gradient);
+    network.TrainStep(inputs, outputs, learningRate: 0.001f);
 
-    float accuracy = network.ComputeAccuracy(testInputs, testOutputs);
-    Console.WriteLine($"Epoch {epoch}: Test Accuracy = {accuracy:P2}");
+    if (epoch % 1000 == 0)
+        Console.WriteLine($"Loss: {network.ComputeCost(inputs, outputs):F6}");
+}
+
+// Option 2: Manual gradient management (expert users)
+var gradient = Gradient.CreateFor(network);
+for (int epoch = 0; epoch < 10_000; epoch++)
+{
+    NeuralNetworkExtensions.BackPropagation(network, gradient, inputs, outputs);
+    // Custom gradient manipulation here...
+    network.ApplyGradient(gradient, learningRate: 0.001f);
 }
 ```
 
@@ -217,8 +230,8 @@ using ThreeN.NeuralNetwork.Optimizers;
 
 var network = new NeuralNetworkBuilder()
     .WithInputs(784)
-    .WithHiddenLayer(128, ActivationFunctionType.Relu)
-    .WithOutputLayer(10, ActivationFunctionType.Softmax)
+    .WithHiddenLayer(128, Activation.Relu)
+    .WithOutputLayer(10, Activation.Softmax)
     .WithInitialization(WeightInitialization.He)
     .Build();
 
@@ -433,8 +446,8 @@ var outputs = new Matrix<float>(8, 1, 2, 3, trainingData);
 
 var network = new NeuralNetworkBuilder()
     .WithInputs(2)
-    .WithHiddenLayer(5, ActivationFunctionType.Relu)
-    .WithOutputLayer(1, ActivationFunctionType.PassThrough)  // Linear output
+    .WithHiddenLayer(5, Activation.Relu)
+    .WithOutputLayer(1, Activation.PassThrough)  // Linear output
     .WithInitialization(WeightInitialization.He)
     .Build();
 
@@ -464,8 +477,8 @@ var testLabels = LoadMNISTLabels("test-labels.idx1-ubyte");      // 10000×10
 // Build classifier: 784 inputs → 128 hidden (ReLU) → 10 outputs (Softmax)
 var network = new NeuralNetworkBuilder()
     .WithInputs(784)
-    .WithHiddenLayer(128, ActivationFunctionType.Relu)
-    .WithOutputLayer(10, ActivationFunctionType.Softmax)
+    .WithHiddenLayer(128, Activation.Relu)
+    .WithOutputLayer(10, Activation.Softmax)
     .WithInitialization(WeightInitialization.He)
     .Build();
 
@@ -495,8 +508,8 @@ Console.WriteLine($"Test Loss: {testLoss:F4}");
 ```csharp
 var network = new NeuralNetworkBuilder()
     .WithInputs(2)
-    .WithHiddenLayer(10, ActivationFunctionType.Relu)
-    .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+    .WithHiddenLayer(10, Activation.Relu)
+    .WithOutputLayer(1, Activation.Sigmoid)
     .Build();
 
 var optimizer = new AdamOptimizer(learningRate: 0.001f);

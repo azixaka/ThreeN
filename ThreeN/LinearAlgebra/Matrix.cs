@@ -105,6 +105,69 @@ public readonly struct Matrix<T> where T : INumber<T>
     }
 
     /// <summary>
+    /// Creates a new matrix with contiguous memory layout (static factory method).
+    /// </summary>
+    /// <param name="rows">Number of rows (must be &gt; 0).</param>
+    /// <param name="columns">Number of columns (must be &gt; 0).</param>
+    /// <returns>A new matrix with the specified dimensions.</returns>
+    /// <exception cref="ArgumentException">If rows or columns are &lt;= 0.</exception>
+    /// <example>
+    /// <code>
+    /// var matrix = Matrix&lt;float&gt;.Create(rows: 10, columns: 5);
+    /// </code>
+    /// </example>
+    public static Matrix<T> Create(int rows, int columns)
+        => new Matrix<T>(rows, columns);
+
+    /// <summary>
+    /// Creates a matrix from an existing data array with contiguous layout.
+    /// </summary>
+    /// <param name="rows">Number of rows (must be &gt; 0).</param>
+    /// <param name="columns">Number of columns (must be &gt; 0).</param>
+    /// <param name="data">Existing data array containing matrix elements in row-major order.</param>
+    /// <returns>A new matrix wrapping the provided data array.</returns>
+    /// <exception cref="ArgumentNullException">If data is null.</exception>
+    /// <exception cref="ArgumentException">If rows or columns are invalid.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">If data array is too small for the specified dimensions.</exception>
+    /// <example>
+    /// <code>
+    /// var data = new float[] { 1, 2, 3, 4, 5, 6 };
+    /// var matrix = Matrix&lt;float&gt;.FromArray(rows: 2, columns: 3, data);
+    /// // Creates: [1 2 3]
+    /// //          [4 5 6]
+    /// </code>
+    /// </example>
+    public static Matrix<T> FromArray(int rows, int columns, T[] data)
+        => new Matrix<T>(rows, columns, data);
+
+    /// <summary>
+    /// Creates a matrix from an existing data array with strided layout (for submatrix views).
+    /// </summary>
+    /// <param name="rows">Number of rows (must be &gt; 0).</param>
+    /// <param name="columns">Number of columns (must be &gt; 0).</param>
+    /// <param name="data">Existing data array containing matrix elements.</param>
+    /// <param name="startIndex">Starting index in the data array where the matrix begins.</param>
+    /// <param name="stride">Number of elements between consecutive rows (must be &gt;= columns).</param>
+    /// <returns>A new matrix view into the provided data array.</returns>
+    /// <exception cref="ArgumentNullException">If data is null.</exception>
+    /// <exception cref="ArgumentException">If rows, columns, or stride are invalid.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">If startIndex or dimensions don't fit in data array.</exception>
+    /// <example>
+    /// <code>
+    /// // Create matrix view of first 2 columns from 3-column data
+    /// var data = new float[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+    /// var inputs = Matrix&lt;float&gt;.FromArrayStrided(
+    ///     rows: 3, columns: 2, data, startIndex: 0, stride: 3
+    /// );
+    /// // Creates view: [1 2]  (skips 3)
+    /// //               [4 5]  (skips 6)
+    /// //               [7 8]  (skips 9)
+    /// </code>
+    /// </example>
+    public static Matrix<T> FromArrayStrided(int rows, int columns, T[] data, int startIndex, int stride)
+        => new Matrix<T>(rows, columns, startIndex, stride, data);
+
+    /// <summary>
     /// Gets or sets the element at the specified row and column (zero-indexed).
     /// </summary>
     /// <param name="row">The zero-based row index.</param>

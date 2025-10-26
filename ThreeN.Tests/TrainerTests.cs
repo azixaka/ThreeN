@@ -24,8 +24,8 @@ public class TrainerTests
 
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(4, ActivationFunctionType.Sigmoid)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(4, Activation.Sigmoid)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.Xavier)
             .Build();
 
@@ -59,8 +59,8 @@ public class TrainerTests
 
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(4, ActivationFunctionType.Sigmoid)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(4, Activation.Sigmoid)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.Xavier)
             .Build();
 
@@ -98,8 +98,8 @@ public class TrainerTests
 
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(4, ActivationFunctionType.Sigmoid)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(4, Activation.Sigmoid)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.Xavier)
             .Build();
 
@@ -144,8 +144,8 @@ public class TrainerTests
 
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(10, ActivationFunctionType.Sigmoid) // Overparameterized
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(10, Activation.Sigmoid) // Overparameterized
+            .WithOutputLayer(1, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.Xavier)
             .Build();
 
@@ -181,15 +181,15 @@ public class TrainerTests
 
         var networkNoReg = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(10, ActivationFunctionType.Sigmoid) // Overparameterized
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(10, Activation.Sigmoid) // Overparameterized
+            .WithOutputLayer(1, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.Xavier)
             .Build();
 
         var networkWithReg = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(10, ActivationFunctionType.Sigmoid) // Overparameterized
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(10, Activation.Sigmoid) // Overparameterized
+            .WithOutputLayer(1, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.Xavier)
             .Build();
 
@@ -245,8 +245,8 @@ public class TrainerTests
 
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(4, ActivationFunctionType.Sigmoid)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(4, Activation.Sigmoid)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.Xavier)
             .Build();
 

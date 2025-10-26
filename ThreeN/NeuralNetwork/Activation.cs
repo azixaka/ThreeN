@@ -1,9 +1,9 @@
-﻿namespace ThreeN.NeuralNetwork;
+namespace ThreeN.NeuralNetwork;
 
 /// <summary>
-/// Specifies the type of activation function to apply in a neural network layer.
+/// Specifies the activation function to apply in a neural network layer.
 /// </summary>
-public enum ActivationFunctionType : byte
+public enum Activation : byte
 {
     /// <summary>
     /// Sigmoid activation: σ(x) = 1 / (1 + e^(-x)). Output range: (0, 1).

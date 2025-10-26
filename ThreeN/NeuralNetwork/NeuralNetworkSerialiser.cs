@@ -68,11 +68,11 @@ public static class NeuralNetworkSerialiser
                 }
             }
 
-            var activationFunctions = new List<ActivationFunctionType>();
+            var activationFunctions = new List<Activation>();
             int afCount = br.ReadInt32();  // Read the count of ActivationFunctions
             for (int i = 0; i < afCount; i++)
             {
-                activationFunctions.Add((ActivationFunctionType)br.ReadByte());
+                activationFunctions.Add((Activation)br.ReadByte());
             }
 
             return new NeuralNetwork(

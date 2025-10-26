@@ -89,13 +89,13 @@ public class MatrixOperationsBenchmarks
     [Benchmark]
     public void Activate_ReLU_784x10_Baseline()
     {
-        MatrixExtensions.Activate(ref _activateMatrix, ActivationFunctionType.Relu);
+        MatrixExtensions.Activate(ref _activateMatrix, Activation.Relu);
     }
 
     [Benchmark]
     public void Activate_Softmax_784x10_Baseline()
     {
-        MatrixExtensions.Activate(ref _activateMatrix, ActivationFunctionType.Softmax);
+        MatrixExtensions.Activate(ref _activateMatrix, Activation.Softmax);
     }
 }
 
@@ -120,7 +120,7 @@ public class NeuralNetworkBenchmarks
     {
         // Small network: 10-5-2 (for XOR-like problems)
         _nn_small = NeuralNetwork.Create(
-            new[] { ActivationFunctionType.Relu, ActivationFunctionType.PassThrough },
+            new[] { Activation.Relu, Activation.PassThrough },
             new[] { 10, 5, 2 }
         );
         _gradient_small = Gradient.CreateFor(_nn_small);
@@ -129,7 +129,7 @@ public class NeuralNetworkBenchmarks
 
         // Medium network: 100-50-10
         _nn_medium = NeuralNetwork.Create(
-            new[] { ActivationFunctionType.Relu, ActivationFunctionType.PassThrough },
+            new[] { Activation.Relu, Activation.PassThrough },
             new[] { 100, 50, 10 }
         );
         _gradient_medium = Gradient.CreateFor(_nn_medium);
@@ -138,7 +138,7 @@ public class NeuralNetworkBenchmarks
 
         // MNIST-like network: 784-128-10
         _nn_mnist = NeuralNetwork.Create(
-            new[] { ActivationFunctionType.Relu, ActivationFunctionType.Softmax },
+            new[] { Activation.Relu, Activation.Softmax },
             new[] { 784, 128, 10 }
         );
         _gradient_mnist = Gradient.CreateFor(_nn_mnist);
@@ -226,8 +226,8 @@ public class OptimizerBenchmarks
 
         _nn = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(4, ActivationFunctionType.Sigmoid)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(4, Activation.Sigmoid)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.Xavier)
             .Build();
 

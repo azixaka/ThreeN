@@ -13,8 +13,8 @@ public class OptimizerTests
         // Arrange
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(3, ActivationFunctionType.Sigmoid)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(3, Activation.Sigmoid)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .Build();
 
         network.Fill(0.5f);
@@ -50,8 +50,8 @@ public class OptimizerTests
 
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(4, ActivationFunctionType.Sigmoid)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(4, Activation.Sigmoid)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.Xavier)
             .Build();
 
@@ -111,8 +111,8 @@ public class OptimizerTests
         // Arrange
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(3, ActivationFunctionType.Sigmoid)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(3, Activation.Sigmoid)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .Build();
 
         network.Fill(0.5f);
@@ -147,8 +147,8 @@ public class OptimizerTests
 
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(4, ActivationFunctionType.Sigmoid)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(4, Activation.Sigmoid)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.Xavier)
             .Build();
 
@@ -185,7 +185,7 @@ public class OptimizerTests
         // Arrange
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .Build();
 
         var gradient = Gradient.CreateFor(network);
@@ -214,8 +214,8 @@ public class OptimizerTests
         // Arrange
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(3, ActivationFunctionType.Sigmoid)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(3, Activation.Sigmoid)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .Build();
 
         network.Fill(0.5f);
@@ -250,8 +250,8 @@ public class OptimizerTests
 
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(4, ActivationFunctionType.Sigmoid)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(4, Activation.Sigmoid)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.Xavier)
             .Build();
 
@@ -290,7 +290,7 @@ public class OptimizerTests
         // Arrange
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .Build();
 
         var gradient = Gradient.CreateFor(network);

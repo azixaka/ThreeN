@@ -12,8 +12,8 @@ public class RegularizationTests
         // Arrange
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(3, ActivationFunctionType.Sigmoid)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(3, Activation.Sigmoid)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .Build();
 
         network.Randomize(-1f, 1f);
@@ -57,8 +57,8 @@ public class RegularizationTests
         // Arrange
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(3, ActivationFunctionType.Sigmoid)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(3, Activation.Sigmoid)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .Build();
 
         network.Randomize(-1f, 1f);
@@ -98,15 +98,15 @@ public class RegularizationTests
         // Train two networks: one without regularization, one with
         var networkNoReg = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(10, ActivationFunctionType.Sigmoid) // Overparameterized
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(10, Activation.Sigmoid) // Overparameterized
+            .WithOutputLayer(1, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.Xavier)
             .Build();
 
         var networkWithReg = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(10, ActivationFunctionType.Sigmoid) // Overparameterized
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(10, Activation.Sigmoid) // Overparameterized
+            .WithOutputLayer(1, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.Xavier)
             .Build();
 

@@ -201,10 +201,10 @@ public static class MatrixExtensions
     /// Other activations (Sigmoid, ReLU, Tanh, etc.) are applied element-wise.
     /// For Softmax, uses numerically stable implementation with max subtraction.
     /// </remarks>
-    public static void Activate(ref Matrix<float> matrix, ActivationFunctionType activationType)
+    public static void Activate(ref Matrix<float> matrix, Activation activationType)
     {
         // Special case: Softmax operates on entire rows, not individual elements
-        if (activationType == ActivationFunctionType.Softmax)
+        if (activationType == Activation.Softmax)
         {
             for (int i = 0; i < matrix.Rows; i++)
             {

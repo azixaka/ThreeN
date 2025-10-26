@@ -19,14 +19,14 @@ public static class ActivationFunctions
     /// <param name="type">The activation function type to apply.</param>
     /// <returns>The activated value.</returns>
     /// <exception cref="ArgumentException">If activation function type is invalid or Softmax (use <see cref="ActivateSoftmax"/> for Softmax).</exception>
-    public static float Activate(float x, ActivationFunctionType type)
+    public static float Activate(float x, Activation type)
         => type switch
         {
-            ActivationFunctionType.Sigmoid => Sigmoid(x),
-            ActivationFunctionType.Relu => Relu(x),
-            ActivationFunctionType.Tanh => Tanh(x),
-            ActivationFunctionType.Sin => Sin(x),
-            ActivationFunctionType.PassThrough => PassThrough(x),
+            Activation.Sigmoid => Sigmoid(x),
+            Activation.Relu => Relu(x),
+            Activation.Tanh => Tanh(x),
+            Activation.Sin => Sin(x),
+            Activation.PassThrough => PassThrough(x),
             _ => throw new ArgumentException("Invalid activation function type", nameof(type))
         };
 
@@ -41,14 +41,14 @@ public static class ActivationFunctions
     /// Takes output y instead of input x for efficiency during backpropagation.
     /// For Sigmoid: derivative = y × (1 - y) where y = sigmoid(x).
     /// </remarks>
-    public static float Derivative(float y, ActivationFunctionType type)
+    public static float Derivative(float y, Activation type)
         => type switch
         {
-            ActivationFunctionType.Sigmoid => SigmoidDerivative(y),
-            ActivationFunctionType.Relu => ReluDerivative(y),
-            ActivationFunctionType.Tanh => TanhDerivative(y),
-            ActivationFunctionType.Sin => SinDerivative(y),
-            ActivationFunctionType.PassThrough => PassThroughDerivative(y),
+            Activation.Sigmoid => SigmoidDerivative(y),
+            Activation.Relu => ReluDerivative(y),
+            Activation.Tanh => TanhDerivative(y),
+            Activation.Sin => SinDerivative(y),
+            Activation.PassThrough => PassThroughDerivative(y),
             _ => throw new ArgumentException("Invalid activation function type", nameof(type))
         };
 

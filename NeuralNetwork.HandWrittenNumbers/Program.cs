@@ -102,8 +102,8 @@ sealed class Program
             // New fluent API with He initialization (good for ReLU)
             nn = new NeuralNetworkBuilder()
                 .WithInputs(784)
-                .WithHiddenLayer(80, ActivationFunctionType.Relu)
-                .WithOutputLayer(10, ActivationFunctionType.Sigmoid)
+                .WithHiddenLayer(80, Activation.Relu)
+                .WithOutputLayer(10, Activation.Sigmoid)
                 .WithInitialization(WeightInitialization.He)
                 .Build();
         }

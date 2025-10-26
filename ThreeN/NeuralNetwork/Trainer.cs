@@ -17,6 +17,12 @@ public sealed class Trainer
     public int EarlyStoppingPatience { get; set; } = 0; // 0 = disabled
     public TrainingHistory History { get; } = new();
 
+    /// <summary>
+    /// Creates a trainer with a custom optimizer.
+    /// </summary>
+    /// <param name="network">The neural network to train.</param>
+    /// <param name="optimizer">The optimizer to use (e.g., Adam, Momentum, SGD).</param>
+    /// <param name="schedule">Optional learning rate schedule (defaults to constant).</param>
     public Trainer(NeuralNetwork network, IOptimizer optimizer,
         LearningRateSchedule? schedule = null)
     {
@@ -24,6 +30,25 @@ public sealed class Trainer
         _gradient = Gradient.CreateFor(network);
         _optimizer = optimizer;
         _schedule = schedule ?? new ConstantSchedule(optimizer.LearningRate);
+    }
+
+    /// <summary>
+    /// Creates a trainer with simple SGD optimizer.
+    /// </summary>
+    /// <param name="network">The neural network to train.</param>
+    /// <param name="learningRate">Learning rate for SGD (typical values: 0.001-0.1).</param>
+    /// <param name="schedule">Optional learning rate schedule (defaults to constant).</param>
+    /// <example>
+    /// <code>
+    /// // Simple trainer with fixed learning rate
+    /// var trainer = new Trainer(network, learningRate: 0.001f);
+    /// trainer.Train(trainInputs, trainOutputs, epochs: 100);
+    /// </code>
+    /// </example>
+    public Trainer(NeuralNetwork network, float learningRate,
+        LearningRateSchedule? schedule = null)
+        : this(network, new SGDOptimizer(learningRate), schedule)
+    {
     }
 
     public void Train(Matrix<float> trainInputs, Matrix<float> trainOutputs,

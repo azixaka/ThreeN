@@ -11,8 +11,8 @@ public class GradientTests
         // Arrange
         var network = new NeuralNetworkBuilder()
             .WithInputs(10)
-            .WithHiddenLayer(5, ActivationFunctionType.Relu)
-            .WithOutputLayer(2, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(5, Activation.Relu)
+            .WithOutputLayer(2, Activation.Sigmoid)
             .Build();
 
         // Act
@@ -39,8 +39,8 @@ public class GradientTests
         // Arrange
         var network = new NeuralNetworkBuilder()
             .WithInputs(3)
-            .WithHiddenLayer(2, ActivationFunctionType.Relu)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(2, Activation.Relu)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .Build();
         var gradient = Gradient.CreateFor(network);
 
@@ -74,8 +74,8 @@ public class GradientTests
         // Arrange
         var network = new NeuralNetworkBuilder()
             .WithInputs(3)
-            .WithHiddenLayer(2, ActivationFunctionType.Relu)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(2, Activation.Relu)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .Build();
         var gradient = Gradient.CreateFor(network);
         gradient.Fill(1.0f); // Fill with non-zero first

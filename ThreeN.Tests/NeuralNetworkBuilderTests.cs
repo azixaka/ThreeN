@@ -11,8 +11,8 @@ public class NeuralNetworkBuilderTests
         // Act
         var network = new NeuralNetworkBuilder()
             .WithInputs(10)
-            .WithHiddenLayer(5, ActivationFunctionType.Relu)
-            .WithOutputLayer(2, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(5, Activation.Relu)
+            .WithOutputLayer(2, Activation.Sigmoid)
             .Build();
 
         // Assert
@@ -28,9 +28,9 @@ public class NeuralNetworkBuilderTests
         // Act
         var network = new NeuralNetworkBuilder()
             .WithInputs(784)
-            .WithHiddenLayer(128, ActivationFunctionType.Relu)
-            .WithHiddenLayer(64, ActivationFunctionType.Relu)
-            .WithOutputLayer(10, ActivationFunctionType.Softmax)
+            .WithHiddenLayer(128, Activation.Relu)
+            .WithHiddenLayer(64, Activation.Relu)
+            .WithOutputLayer(10, Activation.Softmax)
             .Build();
 
         // Assert
@@ -45,7 +45,7 @@ public class NeuralNetworkBuilderTests
     {
         // Arrange
         var builder = new NeuralNetworkBuilder()
-            .WithOutputLayer(10, ActivationFunctionType.Softmax);
+            .WithOutputLayer(10, Activation.Softmax);
 
         // Act & Assert
         var ex = Assert.Throws<InvalidOperationException>(() => builder.Build());
@@ -90,8 +90,8 @@ public class NeuralNetworkBuilderTests
         // Act
         var network = new NeuralNetworkBuilder()
             .WithInputs(10)
-            .WithHiddenLayer(5, ActivationFunctionType.Relu)
-            .WithOutputLayer(2, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(5, Activation.Relu)
+            .WithOutputLayer(2, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.He)
             .Build();
 
@@ -117,8 +117,8 @@ public class NeuralNetworkBuilderTests
         // Act
         var network = new NeuralNetworkBuilder()
             .WithInputs(10)
-            .WithHiddenLayer(5, ActivationFunctionType.Sigmoid)
-            .WithOutputLayer(2, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(5, Activation.Sigmoid)
+            .WithOutputLayer(2, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.Xavier)
             .Build();
 
@@ -144,9 +144,9 @@ public class NeuralNetworkBuilderTests
         // Act - this test verifies the fluent API works
         var network = new NeuralNetworkBuilder()
             .WithInputs(2)
-            .WithHiddenLayer(3, ActivationFunctionType.Relu)
-            .WithHiddenLayer(3, ActivationFunctionType.Relu)
-            .WithOutputLayer(1, ActivationFunctionType.Sigmoid)
+            .WithHiddenLayer(3, Activation.Relu)
+            .WithHiddenLayer(3, Activation.Relu)
+            .WithOutputLayer(1, Activation.Sigmoid)
             .WithInitialization(WeightInitialization.He)
             .Build();
 
